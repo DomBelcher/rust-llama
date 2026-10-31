@@ -6,7 +6,7 @@ use safetensors::{Dtype, SafeTensors, tensor::TensorView};
 use std::{env, fs::File, println};
 use tokenizers::{Encoding, Tokenizer};
 
-use crate::nn::NN;
+use crate::nn::{Linear, NN};
 
 mod config;
 mod nn;
