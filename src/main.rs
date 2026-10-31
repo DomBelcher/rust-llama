@@ -1,12 +1,15 @@
 use dotenv::EnvLoader;
 use half::bf16;
 use memmap2::{Mmap, MmapOptions};
-use ndarray::{Array2, ArrayD, Axis};
+use ndarray::{Array2, ArrayD, Axis, IxDyn};
 use safetensors::{Dtype, SafeTensors, tensor::TensorView};
 use std::{env, fs::File, println};
 use tokenizers::{Encoding, Tokenizer};
 
+use crate::nn::NN;
+
 mod config;
+mod nn;
 
 fn main() {
     let config = config::load_config();
@@ -38,32 +41,19 @@ fn load_tensor_buffer() -> Result<Mmap, Box<dyn std::error::Error + Send + Sync>
     // let tensors = SafeTensors::deserialize(&buffer)?;
 
     return Ok(buffer);
-
-    // println!("{:?}", embedding_tensor.shape());
-
-    // println!("Tokenizer:");
-    // println!("{:?}", enc.get_tokens());
-    // println!("{:?}", enc.get_ids());
-    // let text = tokenizer.decode(enc.get_ids(), true)?;
-    // println!("{}", text);
-
-    // let embedded = embed_tokens(&embedding_tensor, enc.get_ids());
-    // println!("{:?}", embedded.shape());
-
-    // Ok(())
 }
 
 fn get_embedding_tensor(
     tensors: &SafeTensors,
-) -> Result<ArrayD<bf16>, Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<ArrayD<f32>, Box<dyn std::error::Error + Send + Sync>> {
     let embedding_weight = "model.embed_tokens.weight";
     let embedding_tensor_view = tensors.tensor(embedding_weight)?;
 
     let values = embedding_tensor_view
         .data()
         .chunks_exact(2)
-        .map(|b: &[u8]| bf16::from_le_bytes([b[0], b[1]]))
-        .collect::<Vec<bf16>>();
+        .map(|b: &[u8]| f32::from_le_bytes([0, 0, b[0], b[1]]))
+        .collect::<Vec<f32>>();
     let embedding_tensor = ArrayD::from_shape_vec(embedding_tensor_view.shape(), values)?;
     return Ok(embedding_tensor);
 }
@@ -78,11 +68,11 @@ fn load_tokenizer() -> Result<Tokenizer, Box<dyn std::error::Error + Send + Sync
 }
 
 fn embed(
-    embedding_tensor: &ArrayD<bf16>,
+    embedding_tensor: &ArrayD<f32>,
     tokenizer: &Tokenizer,
     input: &str,
-) -> Result<ArrayD<bf16>, Box<dyn std::error::Error + Send + Sync>> {
-    let encoded = tokenizer.encode("Hello, world!", true)?;
+) -> Result<ArrayD<f32>, Box<dyn std::error::Error + Send + Sync>> {
+    let encoded = tokenizer.encode(input, true)?;
     let ids: Vec<usize> = encoded.get_ids().iter().map(|id| *id as usize).collect();
     return Ok(embedding_tensor.select(Axis(0), ids.as_slice()));
 }
