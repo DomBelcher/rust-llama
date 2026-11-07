@@ -1,8 +1,6 @@
 use safetensors::tensor::TensorView;
 use std::collections::HashMap;
 
-use ndarray::ArrayD;
-
 mod attention;
 mod linear;
 

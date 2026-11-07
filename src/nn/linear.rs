@@ -1,8 +1,8 @@
 use core::panic;
 use std::collections::HashMap;
 
-use ndarray::{Array2, ArrayD, Ix2, IxDyn, linalg::Dot};
-use safetensors::{SafeTensors, tensor::TensorView};
+use ndarray::{ArrayD, linalg::Dot};
+use safetensors::tensor::TensorView;
 
 use crate::{nn::NN, utils::tensor_utils};
 

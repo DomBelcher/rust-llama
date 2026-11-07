@@ -1,6 +1,4 @@
-use ndarray::{
-    Array, Array2, ArrayBase, ArrayD, Axis, Data, Dim, Dimension, Ix, IxDyn, IxDynImpl, linalg::Dot,
-};
+use ndarray::{ArrayBase, ArrayD, Axis, Data, IxDyn, linalg::Dot};
 
 use crate::utils::softmax::Softmax;
 

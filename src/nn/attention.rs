@@ -1,8 +1,7 @@
-use core::panic;
-use std::{collections::HashMap, unimplemented};
+use std::collections::HashMap;
 use std::{println, vec};
 
-use ndarray::{Array2, ArrayD, Ix2, IxDyn, linalg::Dot};
+use ndarray::ArrayD;
 use safetensors::tensor::TensorView;
 
 use crate::attention_functions;

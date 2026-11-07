@@ -1,13 +1,13 @@
 use dotenv::EnvLoader;
 use half::bf16;
 use memmap2::{Mmap, MmapOptions};
-use ndarray::{Array0, Array1, Array2, ArrayD, Axis, IxDyn};
-use safetensors::{Dtype, SafeTensors, tensor::TensorView};
-use std::{collections::HashMap, env, fs::File, println, vec};
-use tokenizers::{Encoding, Tokenizer};
+use ndarray::{Array1, ArrayD, Axis};
+use safetensors::SafeTensors;
+use std::{collections::HashMap, fs::File, println, vec};
+use tokenizers::Tokenizer;
 
 use crate::{
-    nn::{Linear, NN, PositionEmbedding},
+    nn::{NN, PositionEmbedding},
     utils::tensor_utils,
 };
 
