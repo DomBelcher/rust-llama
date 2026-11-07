@@ -1,6 +1,6 @@
 use core::panic;
-use std::vec;
 use std::{collections::HashMap, unimplemented};
+use std::{println, vec};
 
 use ndarray::{Array2, ArrayD, Ix2, IxDyn, linalg::Dot};
 use safetensors::tensor::TensorView;
@@ -16,23 +16,23 @@ use crate::nn::{self, NN};
  *
  * output <n_tokens, hidden_dim>
  */
-pub struct Attention<T, const I: usize, const O: usize> {
+pub struct Attention<T> {
     head_dim: usize,
     n_attention_heads: usize,
     n_kv_groups: usize,
     // hidden_dim: usize,
-    q_projection: nn::Linear<T, I, O>,
-    k_projection: nn::Linear<T, I, O>,
-    v_projection: nn::Linear<T, I, O>,
-    o_projection: nn::Linear<T, I, O>,
+    q_projection: nn::Linear<T>,
+    k_projection: nn::Linear<T>,
+    v_projection: nn::Linear<T>,
+    o_projection: nn::Linear<T>,
 }
 
-impl<const I: usize, const O: usize> Attention<f32, I, O> {
-    fn new(head_dim: usize, n_kv_groups: usize, n_attention_heads: usize) -> Self {
+impl Attention<f32> {
+    pub fn new(head_dim: usize, n_attention_heads: usize, n_kv_groups: usize) -> Self {
         return Self {
             head_dim,
-            n_kv_groups,
             n_attention_heads,
+            n_kv_groups,
             q_projection: nn::Linear::new(),
             k_projection: nn::Linear::new(),
             v_projection: nn::Linear::new(),
@@ -47,16 +47,22 @@ impl<const I: usize, const O: usize> Attention<f32, I, O> {
      *
      * output <n_tokens, hidden_dim>
      */
-    fn fwd(
+    pub fn forward(
         &self,
         input: &ArrayD<f32>,
-        position_embeddings: PositionEmbedding,
+        position_embeddings: &PositionEmbedding,
         attention_mask: Option<ArrayD<f32>>,
         kv_cache: Option<HashMap<(), ()>>,
     ) -> ArrayD<f32> {
         let query_states = self.q_projection.forward(input);
+        println!("query_states");
+        println!("{:?}", query_states.shape());
         let key_states = self.k_projection.forward(input);
+        println!("key_states");
+        println!("{:?}", key_states.shape());
         let value_states = self.v_projection.forward(input);
+        println!("value_states");
+        println!("{:?}", value_states.shape());
 
         // <n_tokens, d_v * n_attn_heads>
         let attention_output = attention_functions::grouped_query_attention(
@@ -73,16 +79,16 @@ impl<const I: usize, const O: usize> Attention<f32, I, O> {
     }
 }
 
-impl<const I: usize, const O: usize> NN for Attention<f32, I, O> {
-    fn forward(&self, input: &ArrayD<f32>) -> ArrayD<f32> {
-        unimplemented!();
-    }
+impl NN for Attention<f32> {
+    // fn forward(&self, input: &ArrayD<f32>) -> ArrayD<f32> {
+    //     return self.fwd(input, position_embeddings, attention_mask, kv_cache);
+    // }
 
     fn load_weight_tensors(&mut self, tensors: &HashMap<String, &TensorView>) {
         let q_weight_view = *tensors.get("q_proj.weight").unwrap();
         let k_weight_view = *tensors.get("k_proj.weight").unwrap();
         let v_weight_view = *tensors.get("v_proj.weight").unwrap();
-        let o_weight_view = *tensors.get("v_proj.weight").unwrap();
+        let o_weight_view = *tensors.get("o_proj.weight").unwrap();
 
         self.q_projection
             .load_weight_tensors(&HashMap::<String, &TensorView>::from_iter(
@@ -106,7 +112,7 @@ impl<const I: usize, const O: usize> NN for Attention<f32, I, O> {
     }
 }
 
-struct PositionEmbedding {
-    cos: ArrayD<f32>,
-    sin: ArrayD<f32>,
+pub struct PositionEmbedding {
+    pub cos: ArrayD<f32>,
+    pub sin: ArrayD<f32>,
 }

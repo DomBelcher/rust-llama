@@ -1,13 +1,13 @@
 use dotenv::EnvLoader;
 use half::bf16;
 use memmap2::{Mmap, MmapOptions};
-use ndarray::{Array2, ArrayD, Axis, IxDyn};
+use ndarray::{Array0, Array1, Array2, ArrayD, Axis, IxDyn};
 use safetensors::{Dtype, SafeTensors, tensor::TensorView};
-use std::{env, fs::File, println};
+use std::{collections::HashMap, env, fs::File, println, vec};
 use tokenizers::{Encoding, Tokenizer};
 
 use crate::{
-    nn::{Linear, NN},
+    nn::{Linear, NN, PositionEmbedding},
     utils::tensor_utils,
 };
 
@@ -26,10 +26,50 @@ fn main() {
     let embedding_tensor = get_embedding_tensor(&tensors).unwrap();
     let tokenizer = load_tokenizer().unwrap();
 
+    let mut test_attention_layer: nn::Attention<f32> = nn::Attention::new(64, 32, 8);
+    let test_position_embedding = PositionEmbedding {
+        cos: Array1::from_vec(vec![]).into_dyn(),
+        sin: Array1::from_vec(vec![]).into_dyn(),
+    };
+
+    test_attention_layer.load_weight_tensors(&HashMap::from_iter(
+        vec![
+            (
+                "q_proj.weight".to_string(),
+                &tensors
+                    .tensor("model.layers.0.self_attn.q_proj.weight")
+                    .unwrap(),
+            ),
+            (
+                "k_proj.weight".to_string(),
+                &tensors
+                    .tensor("model.layers.0.self_attn.k_proj.weight")
+                    .unwrap(),
+            ),
+            (
+                "v_proj.weight".to_string(),
+                &tensors
+                    .tensor("model.layers.0.self_attn.v_proj.weight")
+                    .unwrap(),
+            ),
+            (
+                "o_proj.weight".to_string(),
+                &tensors
+                    .tensor("model.layers.0.self_attn.o_proj.weight")
+                    .unwrap(),
+            ),
+        ]
+        .into_iter(),
+    ));
+
     let text = "Hello, World!";
     let embedded_text = embed(&embedding_tensor, &tokenizer, text).unwrap();
 
     println!("{:?}", embedded_text.shape());
+
+    let output = test_attention_layer.forward(&embedded_text, &test_position_embedding, None, None);
+
+    println!("{:?}", output);
 }
 
 fn print_model(tensors: &SafeTensors) {

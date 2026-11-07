@@ -1,6 +1,9 @@
-use std::unimplemented;
+use std::{unimplemented, vec};
 
-use ndarray::{Array, Array2, ArrayBase, ArrayD, ArrayRef, Axis, Data, Dim, Ix, IxDyn, ViewRepr};
+use ndarray::{
+    Array, Array2, ArrayBase, ArrayD, ArrayRef, Axis, Data, Dim, Ix, IxDyn, ViewRepr, concatenate,
+    stack,
+};
 
 use crate::attention_functions::multi_headed;
 
@@ -39,6 +42,7 @@ where
     let value_head_states = key_states.to_shape((n_tokens, n_kv_heads, d_v)).unwrap();
 
     let mut output = Array2::<f32>::zeros([n_tokens, d_v]).into_dyn();
+    let mut attention_head_outputs = vec![];
 
     for attn_head_index in 0..n_attention_heads {
         let kv_head_index = attn_head_index / n_attn_heads_per_kv_head;
@@ -51,16 +55,25 @@ where
         let v_h = value_head_states.index_axis(Axis(1), kv_head_index);
 
         // <n_tokens, d_v>
-        let attn_head_output: ArrayBase<ndarray::OwnedRepr<f32>, Dim<ndarray::IxDynImpl>, f32> =
-            multi_headed::multi_headed_attention(
-                &q_h.into_dyn(),
-                &k_h.into_dyn(),
-                &v_h.into_dyn(),
-                &attention_mask,
-            );
-        output = output + attn_head_output;
+        let attn_head_output = multi_headed::multi_headed_attention(
+            &q_h.into_dyn(),
+            &k_h.into_dyn(),
+            &v_h.into_dyn(),
+            &attention_mask,
+        );
+        println!("head {} attn_head_output", attn_head_index);
+        println!("{:?}", attn_head_output.shape());
+        // output = output + attn_head_output;
+        attention_head_outputs.push(attn_head_output);
     }
-    output /= n_attention_heads as f32;
 
-    return output;
+    return concatenate(
+        Axis(1),
+        attention_head_outputs
+            .iter()
+            .map(|a| a.view())
+            .collect::<Vec<_>>()
+            .as_slice(),
+    )
+    .unwrap();
 }
