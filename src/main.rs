@@ -6,15 +6,22 @@ use safetensors::{Dtype, SafeTensors, tensor::TensorView};
 use std::{env, fs::File, println};
 use tokenizers::{Encoding, Tokenizer};
 
-use crate::nn::{Linear, NN};
+use crate::{
+    nn::{Linear, NN},
+    utils::tensor_utils,
+};
 
+mod attention_functions;
 mod config;
 mod nn;
+mod utils;
 
 fn main() {
     let config = config::load_config();
     let tensor_buffer = load_tensor_buffer().unwrap();
     let tensors = SafeTensors::deserialize(&tensor_buffer).unwrap();
+
+    print_model(&tensors);
 
     let embedding_tensor = get_embedding_tensor(&tensors).unwrap();
     let tokenizer = load_tokenizer().unwrap();
@@ -27,7 +34,11 @@ fn main() {
 
 fn print_model(tensors: &SafeTensors) {
     println!("Model:");
-    for (name, view) in tensors.tensors() {
+
+    let mut sorted_tensors = tensors.tensors();
+    sorted_tensors.sort_by(|(a_name, _), (b_name, _)| natord::compare(a_name, b_name));
+
+    for (name, view) in sorted_tensors {
         println!("{name}: {:?} {:?}", view.dtype(), view.shape());
     }
 }
@@ -49,13 +60,7 @@ fn get_embedding_tensor(
     let embedding_weight = "model.embed_tokens.weight";
     let embedding_tensor_view = tensors.tensor(embedding_weight)?;
 
-    let values = embedding_tensor_view
-        .data()
-        .chunks_exact(2)
-        .map(|b: &[u8]| f32::from_le_bytes([0, 0, b[0], b[1]]))
-        .collect::<Vec<f32>>();
-    let embedding_tensor = ArrayD::from_shape_vec(embedding_tensor_view.shape(), values)?;
-    return Ok(embedding_tensor);
+    return tensor_utils::load_from_view(&embedding_tensor_view);
 }
 
 fn load_tokenizer() -> Result<Tokenizer, Box<dyn std::error::Error + Send + Sync>> {

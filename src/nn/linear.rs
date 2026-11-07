@@ -1,57 +1,41 @@
 use core::panic;
+use std::collections::HashMap;
 
 use ndarray::{Array2, ArrayD, Ix2, IxDyn, linalg::Dot};
+use safetensors::{SafeTensors, tensor::TensorView};
 
-use crate::nn::NN;
+use crate::{nn::NN, utils::tensor_utils};
 
 pub struct Linear<T, const I: usize, const O: usize> {
     // in_dim: usize,
     // out_dim: usize,
-    pub weights: Option<Array2<T>>,
+    pub weights: Option<ArrayD<T>>,
+    // name: String,
 }
 
 impl<const I: usize, const O: usize> Linear<f32, I, O> {
     pub fn of_weights(weights: ArrayD<f32>) -> Self {
-        let mut layer: Linear<f32, I, O> = Linear::init();
+        let mut layer: Linear<f32, I, O> = Linear::new();
         layer.load_weights(weights);
 
         return layer;
     }
 
-    pub fn init() -> Self {
-        return Self { weights: None };
+    pub fn new() -> Self {
+        return Self {
+            weights: None,
+            // name: "".to_string(),
+        };
     }
 
-    pub fn w(&self) -> &Array2<f32> {
+    pub fn w(&self) -> &ArrayD<f32> {
         return match &self.weights {
             Some(weights) => weights,
             None => panic!("Weights called when not loaded"),
         };
     }
-}
 
-impl<const I: usize, const O: usize> NN for Linear<f32, I, O> {
-    fn forward(&self, input: ArrayD<f32>) -> ArrayD<f32> {
-        if self.weights.is_none() {
-            panic!("No weighs loaded");
-        }
-
-        if input.shape()[1] != I {
-            panic!("Invalid input dimension");
-        }
-        if self.w().shape()[1] != O {
-            panic!("Invalid output dimension");
-        }
-
-        let input_2d = input.into_dimensionality::<Ix2>().unwrap();
-
-        return input_2d
-            .dot(self.w())
-            .into_dimensionality::<IxDyn>()
-            .unwrap();
-    }
-
-    fn load_weights(&mut self, weights: ArrayD<f32>) {
+    pub fn load_weights(&mut self, weights: ArrayD<f32>) {
         let shape = weights.shape();
         if shape.len() != 2 {
             panic!(
@@ -73,7 +57,40 @@ impl<const I: usize, const O: usize> NN for Linear<f32, I, O> {
             );
         }
 
-        self.weights = Some(weights.into_dimensionality::<Ix2>().unwrap());
+        self.weights = Some(weights);
+    }
+
+    // pub fn set_name(&mut self, name: &str) {
+    //     self.name = name.to_string();
+    // }
+}
+
+impl<const I: usize, const O: usize> NN for Linear<f32, I, O> {
+    fn forward(&self, input: &ArrayD<f32>) -> ArrayD<f32> {
+        if self.weights.is_none() {
+            panic!("No weighs loaded");
+        }
+
+        if input.shape()[1] != I {
+            panic!("Invalid input dimension");
+        }
+        if self.w().shape()[1] != O {
+            panic!("Invalid output dimension");
+        }
+
+        return input.dot(self.w());
+        // let input_2d = input.into_dimensionality::<Ix2>().unwrap();
+
+        // return input_2d
+        //     .dot(self.w())
+        //     .into_dimensionality::<IxDyn>()
+        //     .unwrap();
+    }
+
+    fn load_weight_tensors(&mut self, tensors: &HashMap<String, &TensorView>) {
+        let weight_view = tensors.get("weight").unwrap();
+        let weights = tensor_utils::load_from_view(weight_view).unwrap();
+        self.load_weights(weights);
     }
 }
 
