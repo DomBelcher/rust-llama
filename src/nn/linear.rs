@@ -4,7 +4,10 @@ use std::collections::HashMap;
 use ndarray::{ArrayD, linalg::Dot};
 use safetensors::tensor::TensorView;
 
-use crate::{nn::NN, utils::tensor_utils};
+use crate::{
+    nn::NN,
+    utils::tensor_utils::{self, TensorDict},
+};
 
 pub struct Linear<T> {
     // in_dim: usize,
@@ -87,13 +90,16 @@ impl Linear<f32> {
 }
 
 impl NN for Linear<f32> {
-    fn load_weight_tensors(&mut self, tensors: &HashMap<String, &TensorView>) {
+    fn load_weight_tensors(&mut self, tensors: &TensorDict) {
+        println!("Loading tensors from dict");
+        println!("{:?}", tensors.key_map);
+
         let weight_view = tensors.get("weight").unwrap();
         let weights: ndarray::prelude::ArrayBase<
             ndarray::OwnedRepr<f32>,
             ndarray::prelude::Dim<ndarray::IxDynImpl>,
             f32,
-        > = tensor_utils::load_from_view(weight_view).unwrap();
+        > = tensor_utils::load_from_view(&weight_view).unwrap();
         self.load_weights(weights.reversed_axes());
     }
 }

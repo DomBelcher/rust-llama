@@ -6,6 +6,7 @@ use safetensors::tensor::TensorView;
 
 use crate::attention_functions;
 use crate::nn::{self, NN};
+use crate::utils::tensor_utils::TensorDict;
 
 /**
  * q_proj <hidden_dim, d_k * n_attn_heads>
@@ -83,28 +84,18 @@ impl NN for Attention<f32> {
     //     return self.fwd(input, position_embeddings, attention_mask, kv_cache);
     // }
 
-    fn load_weight_tensors(&mut self, tensors: &HashMap<String, &TensorView>) {
-        let q_weight_view = *tensors.get("q_proj.weight").unwrap();
-        let k_weight_view = *tensors.get("k_proj.weight").unwrap();
-        let v_weight_view = *tensors.get("v_proj.weight").unwrap();
-        let o_weight_view = *tensors.get("o_proj.weight").unwrap();
+    fn load_weight_tensors(&mut self, tensors: &TensorDict) {
+        println!("Loading tensors from dict");
+        println!("{:?}", tensors.key_map);
 
         self.q_projection
-            .load_weight_tensors(&HashMap::<String, &TensorView>::from_iter(
-                vec![("weight".to_string(), q_weight_view)].into_iter(),
-            ));
+            .load_weight_tensors(&tensors.filter_prefix("q_proj"));
         self.k_projection
-            .load_weight_tensors(&HashMap::<String, &TensorView>::from_iter(
-                vec![("weight".to_string(), k_weight_view)].into_iter(),
-            ));
+            .load_weight_tensors(&tensors.filter_prefix("k_proj"));
         self.v_projection
-            .load_weight_tensors(&HashMap::<String, &TensorView>::from_iter(
-                vec![("weight".to_string(), v_weight_view)].into_iter(),
-            ));
+            .load_weight_tensors(&tensors.filter_prefix("v_proj"));
         self.o_projection
-            .load_weight_tensors(&HashMap::<String, &TensorView>::from_iter(
-                vec![("weight".to_string(), o_weight_view)].into_iter(),
-            ));
+            .load_weight_tensors(&tensors.filter_prefix("o_proj"));
 
         // let weights = tensor_utils::load_from_view(weight_view).unwrap();
         // self.load_weights(weights);

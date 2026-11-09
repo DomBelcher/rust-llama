@@ -23,6 +23,11 @@ fn main() {
 
     print_model(&tensors);
 
+    let tensor_dict = utils::tensor_utils::TensorDict::new(&tensors);
+    // println!("{:?}", tensor_dict.key_map);
+    // println!("Filtered for 'model.layers.0':");
+    // println!("{:?}", tensor_dict.filter_prefix("model.layers.0").key_map);
+
     let embedding_tensor = get_embedding_tensor(&tensors).unwrap();
     let tokenizer = load_tokenizer().unwrap();
 
@@ -32,35 +37,8 @@ fn main() {
         sin: Array1::from_vec(vec![]).into_dyn(),
     };
 
-    test_attention_layer.load_weight_tensors(&HashMap::from_iter(
-        vec![
-            (
-                "q_proj.weight".to_string(),
-                &tensors
-                    .tensor("model.layers.0.self_attn.q_proj.weight")
-                    .unwrap(),
-            ),
-            (
-                "k_proj.weight".to_string(),
-                &tensors
-                    .tensor("model.layers.0.self_attn.k_proj.weight")
-                    .unwrap(),
-            ),
-            (
-                "v_proj.weight".to_string(),
-                &tensors
-                    .tensor("model.layers.0.self_attn.v_proj.weight")
-                    .unwrap(),
-            ),
-            (
-                "o_proj.weight".to_string(),
-                &tensors
-                    .tensor("model.layers.0.self_attn.o_proj.weight")
-                    .unwrap(),
-            ),
-        ]
-        .into_iter(),
-    ));
+    test_attention_layer
+        .load_weight_tensors(&tensor_dict.filter_prefix("model.layers.0.self_attn"));
 
     let text = "Hello, World!";
     let embedded_text = embed(&embedding_tensor, &tokenizer, text).unwrap();
