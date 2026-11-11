@@ -3,7 +3,7 @@ use half::bf16;
 use memmap2::{Mmap, MmapOptions};
 use ndarray::{Array1, ArrayD, Axis};
 use safetensors::SafeTensors;
-use std::{collections::HashMap, fs::File, println, vec};
+use std::{fs::File, println, vec};
 use tokenizers::Tokenizer;
 
 use crate::{
@@ -11,6 +11,7 @@ use crate::{
     utils::tensor_utils,
 };
 
+mod activation_functions;
 mod attention_functions;
 mod config;
 mod nn;
@@ -23,29 +24,25 @@ fn main() {
 
     print_model(&tensors);
 
-    let tensor_dict = utils::tensor_utils::TensorDict::new(&tensors);
-    // println!("{:?}", tensor_dict.key_map);
-    // println!("Filtered for 'model.layers.0':");
-    // println!("{:?}", tensor_dict.filter_prefix("model.layers.0").key_map);
+    let tensor_dict = tensor_utils::TensorDict::new(&tensors);
 
     let embedding_tensor = get_embedding_tensor(&tensors).unwrap();
     let tokenizer = load_tokenizer().unwrap();
 
-    let mut test_attention_layer: nn::Attention<f32> = nn::Attention::new(64, 32, 8);
+    let mut test_decoder_layer: nn::DecoderBlock<f32> = nn::DecoderBlock::new(64, 32, 8);
     let test_position_embedding = PositionEmbedding {
         cos: Array1::from_vec(vec![]).into_dyn(),
         sin: Array1::from_vec(vec![]).into_dyn(),
     };
 
-    test_attention_layer
-        .load_weight_tensors(&tensor_dict.filter_prefix("model.layers.0.self_attn"));
+    test_decoder_layer.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.0"));
 
     let text = "Hello, World!";
     let embedded_text = embed(&embedding_tensor, &tokenizer, text).unwrap();
 
     println!("{:?}", embedded_text.shape());
 
-    let output = test_attention_layer.forward(&embedded_text, &test_position_embedding, None, None);
+    let output = test_decoder_layer.forward(&embedded_text, &test_position_embedding, None, None);
 
     println!("{:?}", output);
 }

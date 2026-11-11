@@ -64,6 +64,8 @@ impl Attention<f32> {
         println!("value_states");
         println!("{:?}", value_states.shape());
 
+        // missing apply position embedding
+
         // <n_tokens, d_v * n_attn_heads>
         let attention_output = attention_functions::grouped_query_attention(
             &query_states,

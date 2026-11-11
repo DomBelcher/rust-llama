@@ -2,9 +2,13 @@ use safetensors::tensor::TensorView;
 use std::collections::HashMap;
 
 mod attention;
+mod decoder_block;
+mod gated_mlp;
 mod linear;
 
 pub use attention::{Attention, PositionEmbedding};
+pub use decoder_block::DecoderBlock;
+pub use gated_mlp::GatedMLP;
 pub use linear::Linear;
 
 use crate::utils::tensor_utils::TensorDict;
