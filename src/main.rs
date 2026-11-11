@@ -7,8 +7,8 @@ use std::{fs::File, println, vec};
 use tokenizers::Tokenizer;
 
 use crate::{
-    nn::{NN, PositionEmbedding},
-    utils::tensor_utils,
+    nn::NN,
+    utils::{position_embedding::RotaryPositionEmbedding, tensor_utils},
 };
 
 mod activation_functions;
@@ -30,10 +30,11 @@ fn main() {
     let tokenizer = load_tokenizer().unwrap();
 
     let mut test_decoder_layer: nn::DecoderBlock<f32> = nn::DecoderBlock::new(64, 32, 8);
-    let test_position_embedding = PositionEmbedding {
-        cos: Array1::from_vec(vec![]).into_dyn(),
-        sin: Array1::from_vec(vec![]).into_dyn(),
-    };
+    let test_position_embedding = RotaryPositionEmbedding::new(
+        config.max_position_embeddings,
+        config.head_dim,
+        config.rope_theta,
+    );
 
     test_decoder_layer.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.0"));
 

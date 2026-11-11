@@ -6,6 +6,7 @@ use safetensors::tensor::TensorView;
 
 use crate::attention_functions;
 use crate::nn::{self, NN};
+use crate::utils::position_embedding::RotaryPositionEmbedding;
 use crate::utils::tensor_utils::TensorDict;
 
 /**
@@ -50,7 +51,7 @@ impl Attention<f32> {
     pub fn forward(
         &self,
         input: &ArrayD<f32>,
-        position_embeddings: &PositionEmbedding,
+        position_embeddings: &RotaryPositionEmbedding,
         attention_mask: Option<ArrayD<f32>>,
         kv_cache: Option<HashMap<(), ()>>,
     ) -> ArrayD<f32> {
@@ -102,9 +103,4 @@ impl NN for Attention<f32> {
         // let weights = tensor_utils::load_from_view(weight_view).unwrap();
         // self.load_weights(weights);
     }
-}
-
-pub struct PositionEmbedding {
-    pub cos: ArrayD<f32>,
-    pub sin: ArrayD<f32>,
 }

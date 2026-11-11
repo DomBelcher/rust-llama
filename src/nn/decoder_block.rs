@@ -4,8 +4,8 @@ use ndarray::ArrayD;
 
 use crate::{
     activation_functions::activation_function,
-    nn::{Attention, GatedMLP, NN, PositionEmbedding},
-    utils::tensor_utils::TensorDict,
+    nn::{Attention, GatedMLP, NN},
+    utils::{position_embedding::RotaryPositionEmbedding, tensor_utils::TensorDict},
 };
 
 /**
@@ -28,7 +28,7 @@ impl DecoderBlock<f32> {
     pub fn forward(
         &self,
         input: &ArrayD<f32>,
-        position_embeddings: &PositionEmbedding,
+        position_embeddings: &RotaryPositionEmbedding,
         attention_mask: Option<ArrayD<f32>>,
         kv_cache: Option<HashMap<(), ()>>,
     ) -> ArrayD<f32> {
