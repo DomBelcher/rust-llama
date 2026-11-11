@@ -9,6 +9,7 @@ use crate::utils::softmax::Softmax;
  *
  * output <n_tokens, d_v>
  */
+#[allow(non_snake_case)]
 pub fn multi_headed_attention<SQ, SK, SV, SM>(
     query_states: &ArrayBase<SQ, IxDyn>,
     key_states: &ArrayBase<SK, IxDyn>,

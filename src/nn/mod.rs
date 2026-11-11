@@ -1,6 +1,3 @@
-use safetensors::tensor::TensorView;
-use std::collections::HashMap;
-
 mod attention;
 mod decoder_block;
 mod gated_mlp;

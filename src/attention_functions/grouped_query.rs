@@ -1,6 +1,6 @@
 use std::vec;
 
-use ndarray::{Array2, ArrayBase, ArrayD, Axis, Data, IxDyn, concatenate};
+use ndarray::{ArrayBase, ArrayD, Axis, Data, IxDyn, concatenate};
 
 use crate::attention_functions::multi_headed;
 
