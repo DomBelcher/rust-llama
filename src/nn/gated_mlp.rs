@@ -19,6 +19,7 @@ pub struct GatedMLP<T> {
 impl GatedMLP<f32> {
     /**
      * input: <n_tokens, in_dim>
+     *
      * output: <n_tokens, out_dim>
      */
     pub fn forward(&self, input: &ArrayD<f32>) -> ArrayD<f32> {

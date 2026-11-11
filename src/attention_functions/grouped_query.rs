@@ -38,7 +38,6 @@ where
     // <n_tokens, n_kv_heads, d_v>
     let value_head_states = key_states.to_shape((n_tokens, n_kv_heads, d_v)).unwrap();
 
-    let mut output = Array2::<f32>::zeros([n_tokens, d_v]).into_dyn();
     let mut attention_head_outputs = vec![];
 
     for attn_head_index in 0..n_attention_heads {

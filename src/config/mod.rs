@@ -33,6 +33,7 @@ pub struct Config<'a> {
     vocab_size: u32,
 }
 
+// TODO load this from config.json?
 pub fn load_config() -> Config<'static> {
     Config {
         attention_bias: false,

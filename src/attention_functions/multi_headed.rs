@@ -27,5 +27,7 @@ where
     let QKT = query_states.dot(&key_states.t());
     let softmax_QKT = (QKT / d_k).softmax(Axis(1));
 
+    // TODO implement applying attention mask
+
     return softmax_QKT.dot(&value_states);
 }

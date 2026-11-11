@@ -8,12 +8,23 @@ use crate::{
     utils::tensor_utils::TensorDict,
 };
 
+/**
+ * gated_mlp: <in_dim, in_dim>
+ * self_attention: <in_dim, in_dim>
+ */
 pub struct DecoderBlock<T> {
     gated_mlp: GatedMLP<T>,
     self_attention: Attention<T>,
 }
 
 impl DecoderBlock<f32> {
+    /**
+     * input <n_tokens, hidden_dim>
+     * position_embeddings ?
+     * attention_mask <?, ?>
+     *
+     * output <n_tokens, hidden_dim>
+     */
     pub fn forward(
         &self,
         input: &ArrayD<f32>,
@@ -25,6 +36,7 @@ impl DecoderBlock<f32> {
         let hidden_state = input;
         // missing input layernorm
 
+        // <n_tokens, hidden_dim>
         let mut hidden_state = self.self_attention.forward(
             hidden_state,
             position_embeddings,
@@ -32,6 +44,8 @@ impl DecoderBlock<f32> {
             kv_cache,
         );
         // mising post-attention layernorm
+
+        // <n_tokens, hidden_dim>
         hidden_state = self.gated_mlp.forward(&hidden_state);
 
         hidden_state += residual;
