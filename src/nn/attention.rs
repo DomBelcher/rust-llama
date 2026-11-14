@@ -103,3 +103,32 @@ impl NN for Attention<f32> {
         // self.load_weights(weights);
     }
 }
+
+#[cfg(test)]
+mod test {
+    use std::sync::LazyLock;
+
+    use super::*;
+    use crate::utils::test_utils;
+
+    #[test]
+    fn test_1() {
+        println!("Loading model...");
+        let model = test_utils::load_test_model();
+        println!("model loaded")
+    }
+
+    #[test]
+    fn test_2() {
+        println!("Loading model...");
+        let model = test_utils::load_test_model();
+        println!("model loaded")
+    }
+
+    #[test]
+    fn test_3() {
+        println!("Loading model...");
+        let model = test_utils::load_test_model();
+        println!("model loaded")
+    }
+}

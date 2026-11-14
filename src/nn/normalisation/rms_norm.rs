@@ -21,7 +21,11 @@ impl RMSNorm {
         };
     }
 
-    // input: <n_tokens, hidden_dim>
+    /**
+     * input: <n_tokens, hidden_dim>
+     *
+     * output: <n_tokens, hidden_dim>
+     */
     // RMS(x) = sqrt(eps + 1 / n * sum_{i=1}^n( x_i^2 ) )
     pub fn forward(&self, input: &ArrayD<f32>) -> ArrayD<f32> {
         // <n_tokens>
