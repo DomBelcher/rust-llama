@@ -104,6 +104,8 @@ impl NN for Attention<f32> {
     }
 }
 
+// TODO produce a bunch of test data from Huggingface implementation
+// write tests for each component against test data
 #[cfg(test)]
 mod test {
     use std::sync::LazyLock;
