@@ -29,9 +29,23 @@ fn main() {
     let embedding_tensor = get_embedding_tensor(&tensors).unwrap();
     let tokenizer = load_tokenizer().unwrap();
 
-    let mut test_decoder_layer: nn::DecoderBlock<f32> = nn::DecoderBlock::new(&config);
+    // let mut test_decoder_layer: nn::DecoderBlock<f32> = nn::DecoderBlock::new(&config);
 
-    test_decoder_layer.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.0"));
+    // test_decoder_layer.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.0"));
+
+    let mut test_model = (0..16)
+        .map(|i| {
+            let mut decoder_layer = nn::DecoderBlock::new(&config);
+            decoder_layer
+                .load_weight_tensors(&tensor_dict.filter_prefix(&format!("model.layers.{}", i)));
+            return decoder_layer;
+        })
+        .collect::<Vec<_>>();
+
+    // let mut test_model = [
+    //     nn::DecoderBlock::new(&config),
+    //     nn::DecoderBlock::new(&config),
+    // ]
 
     let text = "Hello, World!";
     let embedded_text = embed(&embedding_tensor, &tokenizer, text).unwrap();
@@ -41,7 +55,13 @@ fn main() {
     let test_position_embedding =
         RotaryPositionEmbedding::new(embedded_text.shape()[0], config.head_dim, config.rope_theta);
 
-    let output = test_decoder_layer.forward(&embedded_text, &test_position_embedding, None, None);
+    let mut hidden_state = embedded_text;
+    for i in 0..16 {
+        hidden_state = test_model[i].forward(&hidden_state, &test_position_embedding, None, None)
+    }
+    let output = hidden_state;
+
+    // let output = test_decoder_layer.forward(&embedded_text, &test_position_embedding, None, None);
 
     println!("{:?}", output);
 }
