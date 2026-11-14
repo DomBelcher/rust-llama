@@ -29,13 +29,14 @@ fn main() {
     let embedding_tensor = get_embedding_tensor(&tensors).unwrap();
     let tokenizer = load_tokenizer().unwrap();
 
-    let mut test_decoder_layer: nn::DecoderBlock<f32> = nn::DecoderBlock::new(64, 32, 8);
+    let mut test_decoder_layer: nn::DecoderBlock<f32> = nn::DecoderBlock::new(&config);
 
     test_decoder_layer.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.0"));
 
     let text = "Hello, World!";
     let embedded_text = embed(&embedding_tensor, &tokenizer, text).unwrap();
 
+    println!("embedded_text");
     println!("{:?}", embedded_text.shape());
     let test_position_embedding =
         RotaryPositionEmbedding::new(embedded_text.shape()[0], config.head_dim, config.rope_theta);

@@ -19,8 +19,7 @@ pub struct RotaryPositionEmbedding {
 }
 
 impl RotaryPositionEmbedding {
-    // TODO work out how to actually calculate these
-    // also work out how to apply them in the attention function
+    // TODO apply long context scaling
     pub fn new(max_seq_len: usize, head_dim: usize, theta_base: f32) -> Self {
         let max_exponent_index = (head_dim / 2 - 1) as f32;
         let max_position_index = (max_seq_len - 1) as f32;

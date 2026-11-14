@@ -89,7 +89,7 @@ impl Linear<f32> {
 
 impl NN for Linear<f32> {
     fn load_weight_tensors(&mut self, tensors: &TensorDict) {
-        println!("Loading tensors from dict");
+        println!("Loading tensors for Linear from dict");
         println!("{:?}", tensors.key_map);
 
         let weight_view = tensors.get("weight").unwrap();
