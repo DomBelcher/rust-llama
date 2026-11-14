@@ -2,7 +2,9 @@ use std::vec;
 
 use ndarray::{ArrayBase, ArrayD, Axis, Data, IxDyn, concatenate};
 
-use crate::attention_functions::multi_headed;
+use crate::{
+    attention_functions::multi_headed, utils::position_embedding::RotaryPositionEmbedding,
+};
 
 /**
  * query_states <n_tokens, d_k * n_attn_heads>
@@ -17,6 +19,7 @@ pub fn grouped_query_attention<S>(
     key_states: &ArrayBase<S, IxDyn>,
     value_states: &ArrayBase<S, IxDyn>,
     attention_mask: &Option<ArrayBase<S, IxDyn>>,
+    position_embeddings: &RotaryPositionEmbedding,
     n_attention_heads: usize,
     n_kv_heads: usize,
 ) -> ArrayD<f32>
@@ -45,10 +48,20 @@ where
 
         // <n_tokens, d_k>
         let q_h = query_head_states.index_axis(Axis(1), attn_head_index);
+        println!("q_h");
+        println!("{:?}", q_h.shape());
         // <n_tokens, d_k>
         let k_h = key_head_states.index_axis(Axis(1), kv_head_index);
+        println!("k_h");
+        println!("{:?}", k_h.shape());
         // <n_tokens, d_v>
         let v_h = value_head_states.index_axis(Axis(1), kv_head_index);
+        println!("v_h");
+        println!("{:?}", v_h.shape());
+
+        // apply position embedding
+        let q_h = position_embeddings.forward(&q_h);
+        let k_h = position_embeddings.forward(&k_h);
 
         // <n_tokens, d_v>
         let attn_head_output = multi_headed::multi_headed_attention(

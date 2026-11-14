@@ -30,11 +30,6 @@ fn main() {
     let tokenizer = load_tokenizer().unwrap();
 
     let mut test_decoder_layer: nn::DecoderBlock<f32> = nn::DecoderBlock::new(64, 32, 8);
-    let test_position_embedding = RotaryPositionEmbedding::new(
-        config.max_position_embeddings,
-        config.head_dim,
-        config.rope_theta,
-    );
 
     test_decoder_layer.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.0"));
 
@@ -42,6 +37,8 @@ fn main() {
     let embedded_text = embed(&embedding_tensor, &tokenizer, text).unwrap();
 
     println!("{:?}", embedded_text.shape());
+    let test_position_embedding =
+        RotaryPositionEmbedding::new(embedded_text.shape()[0], config.head_dim, config.rope_theta);
 
     let output = test_decoder_layer.forward(&embedded_text, &test_position_embedding, None, None);
 
