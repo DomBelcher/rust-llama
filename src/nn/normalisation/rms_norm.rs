@@ -74,3 +74,78 @@ impl NN for RMSNorm {
         self.load_weights(tensor_utils::load_from_view(&tensors.get("weight").unwrap()).unwrap());
     }
 }
+
+// TODO produce a bunch of test data from Huggingface implementation
+// write tests for each component against test data
+#[cfg(test)]
+mod test {
+    use approx::assert_relative_eq;
+    use safetensors::SafeTensors;
+
+    use super::*;
+    use crate::{print_model, utils::test_utils};
+
+    #[test]
+    fn test_layer_0() {
+        let config = test_utils::load_config();
+        let tensor_dict = test_utils::load_tensor_dict();
+
+        let test_data_buffer = test_utils::load_test_data_buffer("hello_world").unwrap();
+        let test_data = SafeTensors::deserialize(&test_data_buffer).unwrap();
+
+        let mut norm = RMSNorm::new(config.hidden_size, config.rms_norm_eps);
+        norm.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.0.input_layernorm"));
+
+        let test_input =
+            tensor_utils::load_from_view(&test_data.tensor("l0.attn_norm.input").unwrap()).unwrap();
+        let expected_out =
+            tensor_utils::load_from_view(&test_data.tensor("l0.attn_norm.output").unwrap())
+                .unwrap();
+        // let n_tokens = test_input.shape()[0];
+        // let head_size = config.hidden_size / config.num_attention_heads;
+
+        // let per_head_input = test_input
+        //     .to_shape((n_tokens, config.num_attention_heads, head_size))
+        //     .unwrap();
+
+        // for attn_head_index in 0..config.num_attention_heads {
+        //     let head_input = per_head_input.index_axis(Axis(1), attn_head_index);
+        // }
+        let test_output = norm.forward(&test_input);
+
+        assert_relative_eq!(
+            test_output,
+            expected_out,
+            epsilon = 1e-6,
+            max_relative = 1e-4
+        );
+    }
+
+    #[test]
+    fn test_layer_15() {
+        let config = test_utils::load_config();
+        let tensor_dict = test_utils::load_tensor_dict();
+
+        let test_data_buffer = test_utils::load_test_data_buffer("hello_world").unwrap();
+        let test_data = SafeTensors::deserialize(&test_data_buffer).unwrap();
+
+        let mut norm = RMSNorm::new(config.hidden_size, config.rms_norm_eps);
+        norm.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.15.input_layernorm"));
+
+        let test_input =
+            tensor_utils::load_from_view(&test_data.tensor("l15.attn_norm.input").unwrap())
+                .unwrap();
+        let expected_out =
+            tensor_utils::load_from_view(&test_data.tensor("l15.attn_norm.output").unwrap())
+                .unwrap();
+
+        let test_output = norm.forward(&test_input);
+
+        assert_relative_eq!(
+            test_output,
+            expected_out,
+            epsilon = 1e-6,
+            max_relative = 1e-4
+        );
+    }
+}

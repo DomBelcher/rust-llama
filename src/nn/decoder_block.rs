@@ -57,7 +57,6 @@ impl DecoderBlock<f32> {
         return hidden_state + residual;
     }
 
-    // TODO make this use config as input?
     pub fn new(config: &Config) -> Self {
         return DecoderBlock {
             gated_mlp: GatedMLP::new(activation_function("silu").unwrap()),

@@ -4,10 +4,11 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+approx = "0.5.1"
 dotenv-ng = "1.0.0"
 half = "2.7.1"
 memmap2 = "0.9.12"
 natord = "1.0.9"
-ndarray = "0.17.2"
+ndarray = { version = "0.17.2", features = ["approx"] }
 safetensors = "0.8.0"
 tokenizers = "0.23.2"

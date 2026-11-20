@@ -1,6 +1,4 @@
-use core::panic;
-
-use ndarray::{ArrayD, linalg::Dot};
+use ndarray::{Array2, ArrayD, Ix2, linalg::Dot};
 
 use crate::{
     nn::NN,
@@ -45,18 +43,6 @@ impl Linear<f32> {
                 shape.len()
             );
         }
-        // if shape[0] != I {
-        //     panic!(
-        //         "Shape {:?} not valid in dimension 0. Expected {}, found {}",
-        //         shape, I, shape[0]
-        //     );
-        // }
-        // if shape[1] != O {
-        //     panic!(
-        //         "Shape {:?} not valid in dimension 1. Expected {}, found {}",
-        //         shape, O, shape[1]
-        //     );
-        // }
 
         self.weights = Some(weights);
     }
@@ -65,21 +51,19 @@ impl Linear<f32> {
         if self.weights.is_none() {
             panic!("No weighs loaded");
         }
-
-        // if input.shape()[1] != I {
-        //     panic!("Invalid input dimension");
-        // }
-        // if self.w().shape()[1] != O {
-        //     panic!("Invalid output dimension");
-        // }
-
         return input.dot(self.w());
-        // let input_2d = input.into_dimensionality::<Ix2>().unwrap();
+    }
 
-        // return input_2d
-        //     .dot(self.w())
-        //     .into_dimensionality::<IxDyn>()
-        //     .unwrap();
+    pub fn forward_2d(&self, input: &Array2<f32>) -> Array2<f32> {
+        if self.weights.is_none() {
+            panic!("No weighs loaded");
+        }
+        return input
+            .view()
+            .into_dyn()
+            .dot(self.w())
+            .into_dimensionality::<Ix2>()
+            .unwrap();
     }
 
     // pub fn set_name(&mut self, name: &str) {
@@ -102,25 +86,303 @@ impl NN for Linear<f32> {
     }
 }
 
-// fn test() {
-//     let i: ArrayD<f32> = Array2::from_shape_vec((2, 2), vec![2., 1., 0., 3.])
-//         .unwrap()
-//         .into_dimensionality::<IxDyn>()
-//         .unwrap();
-//     println!("Input");
-//     println!("{:?}", i);
+#[cfg(test)]
+mod test {
+    use approx::assert_relative_eq;
+    use safetensors::SafeTensors;
 
-//     let w: Array2<f32> = Array2::from_shape_vec((2, 2), vec![1., 5., 2., 7.]).unwrap();
-//     println!("Weights");
-//     println!("{:?}", w);
+    use super::*;
+    use crate::utils::test_utils;
 
-//     let linear: Linear<f32, 3, 2> = Linear { weights: w };
-//     println!("Output");
-//     println!("{:?}", linear.forward(i));
+    #[test]
+    fn test_layer_0_q_proj() {
+        let config = test_utils::load_config();
+        let tensor_dict = test_utils::load_tensor_dict();
 
-// let w = Array2::from_shape_vec((2, 2), vec![1., 5., 2., 7.])
-//     .unwrap()
-//     .into_dimensionality::<IxDyn>()
-//     .unwrap();
-// let f: Linear<f32, 2, 2> = Linear::of_weights(w);
-// }
+        let test_data_buffer = test_utils::load_test_data_buffer("hello_world").unwrap();
+        let test_data = SafeTensors::deserialize(&test_data_buffer).unwrap();
+
+        let mut linear = Linear::new();
+        linear.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.0.self_attn.q_proj"));
+
+        let test_input =
+            tensor_utils::load_from_view(&test_data.tensor("l0.q_proj.input").unwrap()).unwrap();
+        let expected_out =
+            tensor_utils::load_from_view(&test_data.tensor("l0.q_proj.output").unwrap()).unwrap();
+
+        let test_output = linear.forward(&test_input);
+
+        assert_relative_eq!(
+            test_output,
+            expected_out,
+            epsilon = 1e-6,
+            max_relative = 1e-4
+        );
+    }
+
+    #[test]
+    fn test_layer_0_k_proj() {
+        let config = test_utils::load_config();
+        let tensor_dict = test_utils::load_tensor_dict();
+
+        let test_data_buffer = test_utils::load_test_data_buffer("hello_world").unwrap();
+        let test_data = SafeTensors::deserialize(&test_data_buffer).unwrap();
+
+        let mut linear = Linear::new();
+        linear.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.0.self_attn.k_proj"));
+
+        let test_input =
+            tensor_utils::load_from_view(&test_data.tensor("l0.k_proj.input").unwrap()).unwrap();
+        let expected_out =
+            tensor_utils::load_from_view(&test_data.tensor("l0.k_proj.output").unwrap()).unwrap();
+
+        let test_output = linear.forward(&test_input);
+
+        assert_relative_eq!(
+            test_output,
+            expected_out,
+            epsilon = 1e-6,
+            max_relative = 1e-4
+        );
+    }
+
+    #[test]
+    fn test_layer_0_v_proj() {
+        let config = test_utils::load_config();
+        let tensor_dict = test_utils::load_tensor_dict();
+
+        let test_data_buffer = test_utils::load_test_data_buffer("hello_world").unwrap();
+        let test_data = SafeTensors::deserialize(&test_data_buffer).unwrap();
+
+        let mut linear = Linear::new();
+        linear.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.0.self_attn.v_proj"));
+
+        let test_input =
+            tensor_utils::load_from_view(&test_data.tensor("l0.v_proj.input").unwrap()).unwrap();
+        let expected_out =
+            tensor_utils::load_from_view(&test_data.tensor("l0.v_proj.output").unwrap()).unwrap();
+
+        let test_output = linear.forward(&test_input);
+
+        assert_relative_eq!(
+            test_output,
+            expected_out,
+            epsilon = 1e-6,
+            max_relative = 1e-4
+        );
+    }
+
+    #[test]
+    fn test_layer_0_o_proj() {
+        let config = test_utils::load_config();
+        let tensor_dict = test_utils::load_tensor_dict();
+
+        let test_data_buffer = test_utils::load_test_data_buffer("hello_world").unwrap();
+        let test_data = SafeTensors::deserialize(&test_data_buffer).unwrap();
+
+        let mut linear = Linear::new();
+        linear.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.0.self_attn.o_proj"));
+
+        let test_input =
+            tensor_utils::load_from_view(&test_data.tensor("l0.o_proj.input").unwrap()).unwrap();
+        let expected_out =
+            tensor_utils::load_from_view(&test_data.tensor("l0.o_proj.output").unwrap()).unwrap();
+
+        let test_output = linear.forward(&test_input);
+
+        assert_relative_eq!(
+            test_output,
+            expected_out,
+            epsilon = 1e-6,
+            max_relative = 1e-4
+        );
+    }
+
+    #[test]
+    fn test_layer_0_mlp_gate_proj() {
+        let config = test_utils::load_config();
+        let tensor_dict = test_utils::load_tensor_dict();
+
+        let test_data_buffer = test_utils::load_test_data_buffer("hello_world").unwrap();
+        let test_data = SafeTensors::deserialize(&test_data_buffer).unwrap();
+
+        let mut linear = Linear::new();
+        linear.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.0.mlp.gate_proj"));
+
+        let test_input =
+            tensor_utils::load_from_view(&test_data.tensor("l0.mlp.gate_proj.input").unwrap())
+                .unwrap();
+        let expected_out =
+            tensor_utils::load_from_view(&test_data.tensor("l0.mlp.gate_proj.output").unwrap())
+                .unwrap();
+
+        let test_output = linear.forward(&test_input);
+
+        assert_relative_eq!(
+            test_output,
+            expected_out,
+            epsilon = 1e-6,
+            max_relative = 1e-4
+        );
+    }
+
+    #[test]
+    fn test_layer_0_mlp_up_proj() {
+        let config = test_utils::load_config();
+        let tensor_dict = test_utils::load_tensor_dict();
+
+        let test_data_buffer = test_utils::load_test_data_buffer("hello_world").unwrap();
+        let test_data = SafeTensors::deserialize(&test_data_buffer).unwrap();
+
+        let mut linear = Linear::new();
+        linear.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.0.mlp.up_proj"));
+
+        let test_input =
+            tensor_utils::load_from_view(&test_data.tensor("l0.mlp.up_proj.input").unwrap())
+                .unwrap();
+        let expected_out =
+            tensor_utils::load_from_view(&test_data.tensor("l0.mlp.up_proj.output").unwrap())
+                .unwrap();
+
+        let test_output = linear.forward(&test_input);
+
+        assert_relative_eq!(
+            test_output,
+            expected_out,
+            epsilon = 1e-6,
+            max_relative = 1e-4
+        );
+    }
+
+    #[test]
+    fn test_layer_0_mlp_down_proj() {
+        let config = test_utils::load_config();
+        let tensor_dict = test_utils::load_tensor_dict();
+
+        let test_data_buffer = test_utils::load_test_data_buffer("hello_world").unwrap();
+        let test_data = SafeTensors::deserialize(&test_data_buffer).unwrap();
+
+        let mut linear = Linear::new();
+        linear.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.0.mlp.down_proj"));
+
+        let test_input =
+            tensor_utils::load_from_view(&test_data.tensor("l0.mlp.down_proj.input").unwrap())
+                .unwrap();
+        let expected_out =
+            tensor_utils::load_from_view(&test_data.tensor("l0.mlp.down_proj.output").unwrap())
+                .unwrap();
+
+        let test_output = linear.forward(&test_input);
+
+        assert_relative_eq!(
+            test_output,
+            expected_out,
+            epsilon = 1e-6,
+            max_relative = 1e-4
+        );
+    }
+
+    #[test]
+    fn test_layer_15_q_proj() {
+        let config = test_utils::load_config();
+        let tensor_dict = test_utils::load_tensor_dict();
+
+        let test_data_buffer = test_utils::load_test_data_buffer("hello_world").unwrap();
+        let test_data = SafeTensors::deserialize(&test_data_buffer).unwrap();
+
+        let mut linear = Linear::new();
+        linear.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.15.self_attn.q_proj"));
+
+        let test_input =
+            tensor_utils::load_from_view(&test_data.tensor("l15.q_proj.input").unwrap()).unwrap();
+        let expected_out =
+            tensor_utils::load_from_view(&test_data.tensor("l15.q_proj.output").unwrap()).unwrap();
+
+        let test_output = linear.forward(&test_input);
+
+        assert_relative_eq!(
+            test_output,
+            expected_out,
+            epsilon = 1e-6,
+            max_relative = 1e-4
+        );
+    }
+
+    #[test]
+    fn test_layer_15_k_proj() {
+        let config = test_utils::load_config();
+        let tensor_dict = test_utils::load_tensor_dict();
+
+        let test_data_buffer = test_utils::load_test_data_buffer("hello_world").unwrap();
+        let test_data = SafeTensors::deserialize(&test_data_buffer).unwrap();
+
+        let mut linear = Linear::new();
+        linear.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.15.self_attn.k_proj"));
+
+        let test_input =
+            tensor_utils::load_from_view(&test_data.tensor("l15.k_proj.input").unwrap()).unwrap();
+        let expected_out =
+            tensor_utils::load_from_view(&test_data.tensor("l15.k_proj.output").unwrap()).unwrap();
+
+        let test_output = linear.forward(&test_input);
+
+        assert_relative_eq!(
+            test_output,
+            expected_out,
+            epsilon = 1e-6,
+            max_relative = 1e-4
+        );
+    }
+
+    #[test]
+    fn test_layer_15_v_proj() {
+        let config = test_utils::load_config();
+        let tensor_dict = test_utils::load_tensor_dict();
+
+        let test_data_buffer = test_utils::load_test_data_buffer("hello_world").unwrap();
+        let test_data = SafeTensors::deserialize(&test_data_buffer).unwrap();
+
+        let mut linear = Linear::new();
+        linear.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.15.self_attn.v_proj"));
+
+        let test_input =
+            tensor_utils::load_from_view(&test_data.tensor("l15.v_proj.input").unwrap()).unwrap();
+        let expected_out =
+            tensor_utils::load_from_view(&test_data.tensor("l15.v_proj.output").unwrap()).unwrap();
+
+        let test_output = linear.forward(&test_input);
+
+        assert_relative_eq!(
+            test_output,
+            expected_out,
+            epsilon = 1e-6,
+            max_relative = 1e-4
+        );
+    }
+
+    #[test]
+    fn test_layer_15_o_proj() {
+        let config = test_utils::load_config();
+        let tensor_dict = test_utils::load_tensor_dict();
+
+        let test_data_buffer = test_utils::load_test_data_buffer("hello_world").unwrap();
+        let test_data = SafeTensors::deserialize(&test_data_buffer).unwrap();
+
+        let mut linear = Linear::new();
+        linear.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.15.self_attn.o_proj"));
+
+        let test_input =
+            tensor_utils::load_from_view(&test_data.tensor("l15.o_proj.input").unwrap()).unwrap();
+        let expected_out =
+            tensor_utils::load_from_view(&test_data.tensor("l15.o_proj.output").unwrap()).unwrap();
+
+        let test_output = linear.forward(&test_input);
+
+        assert_relative_eq!(
+            test_output,
+            expected_out,
+            epsilon = 1e-6,
+            max_relative = 1e-4
+        );
+    }
+}

@@ -47,7 +47,7 @@ fn main() {
     //     nn::DecoderBlock::new(&config),
     // ]
 
-    let text = "Hello, World!";
+    let text = "Hello, world!";
     let embedded_text = embed(&embedding_tensor, &tokenizer, text).unwrap();
 
     println!("embedded_text");
@@ -66,7 +66,7 @@ fn main() {
     println!("{:?}", output);
 }
 
-fn print_model(tensors: &SafeTensors) {
+pub fn print_model(tensors: &SafeTensors) {
     println!("Model:");
 
     let mut sorted_tensors = tensors.tensors();
