@@ -1,7 +1,7 @@
 pub struct RopeScalingConfig<'a> {
-    pub factor: f32,
-    pub high_freq_factor: f32,
-    pub low_freq_factor: f32,
+    pub factor: f64,
+    pub high_freq_factor: f64,
+    pub low_freq_factor: f64,
     pub original_max_position_embeddings: u32,
     pub rope_type: &'a str,
 }
@@ -25,7 +25,7 @@ pub struct Config<'a> {
     pub pretraining_tp: u32,
     pub rms_norm_eps: f32,
     pub rope_scaling: RopeScalingConfig<'a>,
-    pub rope_theta: f32,
+    pub rope_theta: f64,
     pub tie_word_embeddings: bool,
     pub use_cache: bool,
     pub vocab_size: u32,

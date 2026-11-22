@@ -136,11 +136,15 @@ mod test {
         let test_input =
             tensor_utils::load_from_view(&test_data.tensor("l0.self_attn.input").unwrap()).unwrap();
         let expected_out =
-            tensor_utils::load_from_view(&test_data.tensor("l0.self_attn.output").unwrap())
+            tensor_utils::load_from_view(&test_data.tensor("l0.self_attn.output.0").unwrap())
                 .unwrap();
 
-        let test_position_embedding =
-            RotaryPositionEmbedding::new(test_input.shape()[0], config.head_dim, config.rope_theta);
+        let test_position_embedding = RotaryPositionEmbedding::new(
+            test_input.shape()[0],
+            config.head_dim,
+            config.rope_theta,
+            &config.rope_scaling,
+        );
 
         let test_output = attention.forward(&test_input, &test_position_embedding, None, None);
 

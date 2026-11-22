@@ -1,9 +1,12 @@
 use std::vec;
 
+use approx::assert_relative_eq;
 use ndarray::{ArrayBase, ArrayD, Axis, Data, IxDyn, concatenate};
+use safetensors::SafeTensors;
 
 use crate::{
-    attention_functions::multi_headed, utils::position_embedding::RotaryPositionEmbedding,
+    attention_functions::multi_headed,
+    utils::{position_embedding::RotaryPositionEmbedding, tensor_utils, test_utils},
 };
 
 /**
@@ -29,6 +32,8 @@ where
     let n_tokens = query_states.shape()[0];
     let d_k = query_states.shape()[1] / n_attention_heads;
     let d_v = value_states.shape()[1] / n_kv_heads;
+
+    let sqrt_dk = (d_k as f32).sqrt();
 
     let n_attn_heads_per_kv_head = n_attention_heads / n_kv_heads;
 
@@ -68,6 +73,7 @@ where
             &q_h.into_dyn(),
             &k_h.into_dyn(),
             &v_h.into_dyn(),
+            sqrt_dk,
             &attention_mask,
         );
         println!("head {} attn_head_output", attn_head_index);
@@ -85,4 +91,48 @@ where
             .as_slice(),
     )
     .unwrap();
+}
+
+// TODO work out why this fails
+// it's probably the attention mask
+#[test]
+fn test_layer_0() {
+    let config = test_utils::load_config();
+    let tensor_dict = test_utils::load_tensor_dict();
+
+    let test_data_buffer = test_utils::load_test_data_buffer("hello_world").unwrap();
+    let test_data = SafeTensors::deserialize(&test_data_buffer).unwrap();
+
+    let test_query_state_input =
+        tensor_utils::load_from_view(&test_data.tensor("l0.q_proj.output").unwrap()).unwrap();
+    let test_key_state_input =
+        tensor_utils::load_from_view(&test_data.tensor("l0.k_proj.output").unwrap()).unwrap();
+    let test_value_state_input =
+        tensor_utils::load_from_view(&test_data.tensor("l0.v_proj.output").unwrap()).unwrap();
+    let expected_out =
+        tensor_utils::load_from_view(&test_data.tensor("l0.o_proj.input").unwrap()).unwrap();
+
+    let test_position_embedding = RotaryPositionEmbedding::new(
+        test_query_state_input.shape()[0],
+        config.head_dim,
+        config.rope_theta,
+        &config.rope_scaling,
+    );
+
+    let test_output = grouped_query_attention(
+        &test_query_state_input,
+        &test_key_state_input,
+        &test_value_state_input,
+        &None,
+        &test_position_embedding,
+        config.num_attention_heads,
+        config.num_key_value_heads,
+    );
+
+    assert_relative_eq!(
+        test_output,
+        expected_out,
+        epsilon = 1e-6,
+        max_relative = 1e-4
+    );
 }

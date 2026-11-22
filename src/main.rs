@@ -52,8 +52,12 @@ fn main() {
 
     println!("embedded_text");
     println!("{:?}", embedded_text.shape());
-    let test_position_embedding =
-        RotaryPositionEmbedding::new(embedded_text.shape()[0], config.head_dim, config.rope_theta);
+    let test_position_embedding = RotaryPositionEmbedding::new(
+        embedded_text.shape()[0],
+        config.head_dim,
+        config.rope_theta,
+        &config.rope_scaling,
+    );
 
     let mut hidden_state = embedded_text;
     for i in 0..16 {
