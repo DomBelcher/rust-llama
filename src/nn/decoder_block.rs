@@ -87,8 +87,7 @@ impl NN for DecoderBlock<f32> {
     }
 }
 
-// TODO produce a bunch of test data from Huggingface implementation
-// write tests for each component against test data
+// TODO test against more prompts
 #[cfg(test)]
 mod test {
     use approx::assert_relative_eq;

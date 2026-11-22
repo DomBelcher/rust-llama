@@ -20,7 +20,6 @@ pub struct RotaryPositionEmbedding {
 }
 
 impl RotaryPositionEmbedding {
-    // TODO apply long context scaling
     pub fn new(
         max_seq_len: usize,
         head_dim: usize,
@@ -64,7 +63,6 @@ impl RotaryPositionEmbedding {
                 - scaling_config.low_freq_factor)
                 / (scaling_config.high_freq_factor - scaling_config.low_freq_factor);
 
-            // todo return interpolated value
             return (1.0 - smoothing_factor) / (frequency_v * scaling_config.factor)
                 + smoothing_factor / frequency_v;
         });

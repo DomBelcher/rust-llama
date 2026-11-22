@@ -27,7 +27,6 @@ where
 
     // QKT <n_tokens, n_tokens>
     let mut QKT = query_states.dot(&key_states.t());
-    // TODO apply attention mask
     if attention_mask.is_some() {
         QKT = QKT + attention_mask.as_ref().unwrap();
     }

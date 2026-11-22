@@ -8,6 +8,13 @@ use crate::{
     utils::{attention_mask::prefill_mask, position_embedding::RotaryPositionEmbedding},
 };
 
+/**
+ * TODOs:
+ * implement full inference with text -> token prediction
+ * investigate/implement KV caching
+ * general performance investigation + improvement
+ *
+ */
 pub struct Llama3<'a, T> {
     config: Config<'a>,
     layers: Vec<DecoderBlock<T>>,
