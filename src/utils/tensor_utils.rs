@@ -1,7 +1,7 @@
 use core::panic;
 use std::{collections::HashMap, println};
 
-use ndarray::ArrayD;
+use ndarray::{Array, Dimension};
 use safetensors::{Dtype::BF16, Dtype::F32, SafeTensors, tensor::TensorView};
 
 fn unpack_f32(data: &[u8]) -> Vec<f32> {
@@ -18,9 +18,9 @@ fn unpack_bf16(data: &[u8]) -> Vec<f32> {
         .collect::<Vec<f32>>();
 }
 
-pub fn load_from_view(
+pub fn load_from_view<D: Dimension>(
     tensor_view: &TensorView,
-) -> Result<ArrayD<f32>, Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<Array<f32, D>, Box<dyn std::error::Error + Send + Sync>> {
     println!(
         "Loading tensor view of shape {:?} type {}",
         tensor_view.shape(),
@@ -34,17 +34,12 @@ pub fn load_from_view(
         _ => panic!("unsupported data type"),
     };
 
-    // let values = tensor_view
-    //     .data()
-    //     .chunks_exact(2)
-    //     .map(|b: &[u8]| f32::from_le_bytes([0, 0, b[0], b[1]]))
-    //     .collect::<Vec<f32>>();
     println!(
         "Attempting to unpack {} values into shape {:?}",
         values.len(),
         tensor_view.shape()
     );
-    let tensor = ArrayD::from_shape_vec(tensor_view.shape(), values)?;
+    let tensor = Array::from_shape_vec(tensor_view.shape(), values)?.into_dimensionality()?;
     return Ok(tensor);
 }
 

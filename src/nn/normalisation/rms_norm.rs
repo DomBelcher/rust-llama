@@ -30,8 +30,6 @@ impl RMSNorm {
     pub fn forward(&self, input: &ArrayD<f32>) -> ArrayD<f32> {
         // <n_tokens>
         let mean_square = input.pow2().mean_axis(Axis(1)).unwrap();
-        println!("mean_square");
-        println!("{:?}", mean_square.shape());
         let inv_sqrt = 1_f32 / (mean_square + self.eps).sqrt();
         let hidden_states = input * inv_sqrt.insert_axis(Axis(1));
 
@@ -83,7 +81,7 @@ mod test {
     use safetensors::SafeTensors;
 
     use super::*;
-    use crate::{print_model, utils::test_utils};
+    use crate::utils::test_utils;
 
     #[test]
     fn test_layer_0() {

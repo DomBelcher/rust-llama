@@ -1,4 +1,4 @@
-use ndarray::ArrayD;
+use ndarray::{Array2, ArrayD, Ix2};
 
 // use crate::activation_functions::Activation;
 use crate::nn::{self, NN};
@@ -10,10 +10,10 @@ use crate::utils::tensor_utils::TensorDict;
  * down_projection: <hidden_dim, out_dim>
  */
 pub struct GatedMLP<T> {
-    up_projection: nn::Linear<T>,
-    gate_projection: nn::Linear<T>,
-    down_projection: nn::Linear<T>,
-    activation_fn: fn(&ArrayD<T>) -> ArrayD<T>,
+    up_projection: nn::Linear<T, Ix2>,
+    gate_projection: nn::Linear<T, Ix2>,
+    down_projection: nn::Linear<T, Ix2>,
+    activation_fn: fn(input: &Array2<f32>) -> Array2<f32>,
 }
 
 impl GatedMLP<f32> {
@@ -23,14 +23,15 @@ impl GatedMLP<f32> {
      * output: <n_tokens, out_dim>
      */
     pub fn forward(&self, input: &ArrayD<f32>) -> ArrayD<f32> {
-        let up = self.up_projection.forward(input);
-        let gated = self.gate_projection.forward(input);
+        let up = self.up_projection.forward_dyn(input);
+        let gated = self.gate_projection.forward_dyn(input);
         return self
             .down_projection
-            .forward(&((self.activation_fn)(&gated) * up));
+            .forward(&((self.activation_fn)(&gated) * up))
+            .into_dyn();
     }
 
-    pub fn new(activation_fn: fn(&ArrayD<f32>) -> ArrayD<f32>) -> Self {
+    pub fn new(activation_fn: fn(&Array2<f32>) -> Array2<f32>) -> Self {
         return GatedMLP {
             up_projection: nn::Linear::new(),
             gate_projection: nn::Linear::new(),
@@ -73,7 +74,6 @@ mod test {
 
     #[test]
     fn test_layer_0() {
-        let config = test_utils::load_config();
         let tensor_dict = test_utils::load_tensor_dict();
 
         let test_data_buffer = test_utils::load_test_data_buffer("hello_world").unwrap();
@@ -98,7 +98,6 @@ mod test {
 
     #[test]
     fn test_layer_15() {
-        let config = test_utils::load_config();
         let tensor_dict = test_utils::load_tensor_dict();
 
         let test_data_buffer = test_utils::load_test_data_buffer("hello_world").unwrap();

@@ -1,3 +1,4 @@
+#[derive(Clone)]
 pub struct RopeScalingConfig<'a> {
     pub factor: f64,
     pub high_freq_factor: f64,
@@ -6,6 +7,7 @@ pub struct RopeScalingConfig<'a> {
     pub rope_type: &'a str,
 }
 
+#[derive(Clone)]
 pub struct Config<'a> {
     pub attention_bias: bool,
     pub attention_dropout: f32,

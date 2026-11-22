@@ -1,8 +1,7 @@
 use std::collections::HashMap;
-use std::{println, vec};
+use std::println;
 
-use ndarray::ArrayD;
-use safetensors::tensor::TensorView;
+use ndarray::{Array2, ArrayD, Ix2};
 
 use crate::attention_functions;
 use crate::nn::{self, NN};
@@ -18,20 +17,20 @@ use crate::utils::tensor_utils::TensorDict;
  * output <n_tokens, hidden_dim>
  */
 pub struct Attention<T> {
-    head_dim: usize,
+    _head_dim: usize,
     n_attention_heads: usize,
     n_kv_groups: usize,
     // hidden_dim: usize,
-    q_projection: nn::Linear<T>,
-    k_projection: nn::Linear<T>,
-    v_projection: nn::Linear<T>,
-    o_projection: nn::Linear<T>,
+    q_projection: nn::Linear<T, Ix2>,
+    k_projection: nn::Linear<T, Ix2>,
+    v_projection: nn::Linear<T, Ix2>,
+    o_projection: nn::Linear<T, Ix2>,
 }
 
 impl Attention<f32> {
     pub fn new(head_dim: usize, n_attention_heads: usize, n_kv_groups: usize) -> Self {
         return Self {
-            head_dim,
+            _head_dim: head_dim,
             n_attention_heads,
             n_kv_groups,
             q_projection: nn::Linear::new(),
@@ -52,32 +51,32 @@ impl Attention<f32> {
         &self,
         input: &ArrayD<f32>,
         position_embeddings: &RotaryPositionEmbedding,
-        attention_mask: Option<ArrayD<f32>>,
-        kv_cache: Option<HashMap<(), ()>>,
+        attention_mask: &Option<Array2<f32>>,
+        _kv_cache: &Option<HashMap<(), ()>>,
     ) -> ArrayD<f32> {
-        let query_states = self.q_projection.forward(input);
-        println!("query_states");
-        println!("{:?}", query_states.shape());
-        let key_states = self.k_projection.forward(input);
-        println!("key_states");
-        println!("{:?}", key_states.shape());
-        let value_states = self.v_projection.forward(input);
-        println!("value_states");
-        println!("{:?}", value_states.shape());
+        let query_states = self.q_projection.forward_dyn(input);
+        // println!("query_states");
+        // println!("{:?}", query_states.shape());
+        let key_states = self.k_projection.forward_dyn(input);
+        // println!("key_states");
+        // println!("{:?}", key_states.shape());
+        let value_states = self.v_projection.forward_dyn(input);
+        // println!("value_states");
+        // println!("{:?}", value_states.shape());
 
         // <n_tokens, d_v * n_attn_heads>
         let attention_output = attention_functions::grouped_query_attention(
             &query_states,
             &key_states,
             &value_states,
-            &attention_mask,
+            attention_mask,
             position_embeddings,
             self.n_attention_heads,
             self.n_kv_groups,
         );
 
         // <n_tokens, hidden_dim>
-        return self.o_projection.forward(&attention_output);
+        return self.o_projection.forward(&attention_output).into_dyn();
     }
 }
 
@@ -108,16 +107,12 @@ impl NN for Attention<f32> {
 // write tests for each component against test data
 #[cfg(test)]
 mod test {
-    use std::sync::LazyLock;
-
     use approx::assert_relative_eq;
     use safetensors::SafeTensors;
 
     use super::*;
-    use crate::utils::{tensor_utils, test_utils};
+    use crate::utils::{attention_mask::prefill_mask, tensor_utils, test_utils};
 
-    // TODO work out why this fails
-    // it's probably the attention mask
     #[test]
     fn test_layer_0() {
         let config = test_utils::load_config();
@@ -139,6 +134,8 @@ mod test {
             tensor_utils::load_from_view(&test_data.tensor("l0.self_attn.output.0").unwrap())
                 .unwrap();
 
+        let n_tokens = test_input.shape()[0];
+
         let test_position_embedding = RotaryPositionEmbedding::new(
             test_input.shape()[0],
             config.head_dim,
@@ -146,7 +143,14 @@ mod test {
             &config.rope_scaling,
         );
 
-        let test_output = attention.forward(&test_input, &test_position_embedding, None, None);
+        let test_attention_mask = prefill_mask(n_tokens);
+
+        let test_output = attention.forward(
+            &test_input,
+            &test_position_embedding,
+            &Some(test_attention_mask),
+            &None,
+        );
 
         assert_relative_eq!(
             test_output,
@@ -157,16 +161,50 @@ mod test {
     }
 
     #[test]
-    fn test_2() {
-        println!("Loading model...");
-        let model = test_utils::load_test_model();
-        println!("model loaded")
-    }
+    fn test_layer_15() {
+        let config = test_utils::load_config();
+        let tensor_dict = test_utils::load_tensor_dict();
 
-    #[test]
-    fn test_3() {
-        println!("Loading model...");
-        let model = test_utils::load_test_model();
-        println!("model loaded")
+        let test_data_buffer = test_utils::load_test_data_buffer("hello_world").unwrap();
+        let test_data = SafeTensors::deserialize(&test_data_buffer).unwrap();
+
+        let mut attention = Attention::new(
+            config.head_dim,
+            config.num_attention_heads,
+            config.num_key_value_heads,
+        );
+        attention.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.15.self_attn"));
+
+        let test_input =
+            tensor_utils::load_from_view(&test_data.tensor("l15.self_attn.input").unwrap())
+                .unwrap();
+        let expected_out =
+            tensor_utils::load_from_view(&test_data.tensor("l15.self_attn.output.0").unwrap())
+                .unwrap();
+
+        let n_tokens = test_input.shape()[0];
+
+        let test_position_embedding = RotaryPositionEmbedding::new(
+            test_input.shape()[0],
+            config.head_dim,
+            config.rope_theta,
+            &config.rope_scaling,
+        );
+
+        let test_attention_mask = prefill_mask(n_tokens);
+
+        let test_output = attention.forward(
+            &test_input,
+            &test_position_embedding,
+            &Some(test_attention_mask),
+            &None,
+        );
+
+        assert_relative_eq!(
+            test_output,
+            expected_out,
+            epsilon = 1e-6,
+            max_relative = 1e-4
+        );
     }
 }

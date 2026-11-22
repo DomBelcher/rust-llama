@@ -1,20 +1,20 @@
-use ndarray::{Array2, ArrayD, Ix2, linalg::Dot};
+use ndarray::{Array, Array2, ArrayD, Dimension, Ix2, linalg::Dot};
 
 use crate::{
     nn::NN,
     utils::tensor_utils::{self, TensorDict},
 };
 
-pub struct Linear<T> {
+pub struct Linear<T, D: Dimension> {
     // in_dim: usize,
     // out_dim: usize,
-    pub weights: Option<ArrayD<T>>,
+    pub weights: Option<Array<T, D>>,
     // name: String,
 }
 
-impl Linear<f32> {
-    pub fn of_weights(weights: ArrayD<f32>) -> Self {
-        let mut layer: Linear<f32> = Linear::new();
+impl Linear<f32, Ix2> {
+    pub fn of_weights(weights: Array<f32, Ix2>) -> Self {
+        let mut layer: Linear<f32, Ix2> = Linear::new();
         layer.load_weights(weights);
 
         return layer;
@@ -27,14 +27,14 @@ impl Linear<f32> {
         };
     }
 
-    pub fn w(&self) -> &ArrayD<f32> {
+    pub fn w(&self) -> &Array<f32, Ix2> {
         return match &self.weights {
             Some(weights) => weights,
             None => panic!("Weights called when not loaded"),
         };
     }
 
-    pub fn load_weights(&mut self, weights: ArrayD<f32>) {
+    pub fn load_weights(&mut self, weights: Array<f32, Ix2>) {
         let shape = weights.shape();
         if shape.len() != 2 {
             panic!(
@@ -47,41 +47,32 @@ impl Linear<f32> {
         self.weights = Some(weights);
     }
 
-    pub fn forward(&self, input: &ArrayD<f32>) -> ArrayD<f32> {
+    pub fn forward(&self, input: &Array<f32, Ix2>) -> Array<f32, Ix2> {
         if self.weights.is_none() {
             panic!("No weighs loaded");
         }
         return input.dot(self.w());
     }
 
-    pub fn forward_2d(&self, input: &Array2<f32>) -> Array2<f32> {
+    pub fn forward_dyn(&self, input: &ArrayD<f32>) -> Array2<f32> {
         if self.weights.is_none() {
             panic!("No weighs loaded");
         }
         return input
             .view()
-            .into_dyn()
-            .dot(self.w())
             .into_dimensionality::<Ix2>()
-            .unwrap();
+            .unwrap()
+            .dot(self.w());
     }
-
-    // pub fn set_name(&mut self, name: &str) {
-    //     self.name = name.to_string();
-    // }
 }
 
-impl NN for Linear<f32> {
+impl NN for Linear<f32, Ix2> {
     fn load_weight_tensors(&mut self, tensors: &TensorDict) {
         println!("Loading tensors for Linear from dict");
         println!("{:?}", tensors.key_map);
 
         let weight_view = tensors.get("weight").unwrap();
-        let weights: ndarray::prelude::ArrayBase<
-            ndarray::OwnedRepr<f32>,
-            ndarray::prelude::Dim<ndarray::IxDynImpl>,
-            f32,
-        > = tensor_utils::load_from_view(&weight_view).unwrap();
+        let weights = tensor_utils::load_from_view::<Ix2>(&weight_view).unwrap();
         self.load_weights(weights.reversed_axes());
     }
 }

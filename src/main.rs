@@ -17,6 +17,8 @@ mod config;
 mod nn;
 mod utils;
 
+mod llama_3;
+
 fn main() {
     let config = config::load_config();
     let tensor_buffer = load_tensor_buffer().unwrap();
@@ -32,6 +34,8 @@ fn main() {
     // let mut test_decoder_layer: nn::DecoderBlock<f32> = nn::DecoderBlock::new(&config);
 
     // test_decoder_layer.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.0"));
+
+    let m = llama_3::Llama3::new(&config);
 
     let mut test_model = (0..16)
         .map(|i| {
@@ -61,7 +65,7 @@ fn main() {
 
     let mut hidden_state = embedded_text;
     for i in 0..16 {
-        hidden_state = test_model[i].forward(&hidden_state, &test_position_embedding, None, None)
+        hidden_state = test_model[i].forward(&hidden_state, &test_position_embedding, &None, &None)
     }
     let output = hidden_state;
 

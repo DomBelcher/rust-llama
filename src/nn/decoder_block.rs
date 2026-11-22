@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use ndarray::ArrayD;
+use ndarray::{Array2, ArrayD};
 
 use crate::{
     activation_functions::activation_function,
@@ -32,10 +32,10 @@ impl DecoderBlock<f32> {
         &self,
         input: &ArrayD<f32>,
         position_embeddings: &RotaryPositionEmbedding,
-        attention_mask: Option<ArrayD<f32>>,
-        kv_cache: Option<HashMap<(), ()>>,
+        attention_mask: &Option<Array2<f32>>,
+        kv_cache: &Option<HashMap<(), ()>>,
     ) -> ArrayD<f32> {
-        let residual = input;
+        let attention_residual = input.clone();
         // let hidden_state = input;
         let hidden_state = self.input_layernorm.forward(input);
 
@@ -46,15 +46,15 @@ impl DecoderBlock<f32> {
             attention_mask,
             kv_cache,
         );
-        let hidden_state = self.input_layernorm.forward(&hidden_state);
-        // mising post-attention layernorm
+        let hidden_state = hidden_state + attention_residual;
+
+        let mlp_residual = hidden_state.clone();
+        let hidden_state = self.post_attention_layernorm.forward(&hidden_state);
 
         // <n_tokens, hidden_dim>
         let hidden_state = self.gated_mlp.forward(&hidden_state);
 
-        // let hidden_state += residual;
-
-        return hidden_state + residual;
+        return hidden_state + mlp_residual;
     }
 
     pub fn new(config: &Config) -> Self {
@@ -84,5 +84,101 @@ impl NN for DecoderBlock<f32> {
             .load_weight_tensors(&tensors.filter_prefix("input_layernorm"));
         self.post_attention_layernorm
             .load_weight_tensors(&tensors.filter_prefix("post_attention_layernorm"));
+    }
+}
+
+// TODO produce a bunch of test data from Huggingface implementation
+// write tests for each component against test data
+#[cfg(test)]
+mod test {
+    use approx::assert_relative_eq;
+    use safetensors::SafeTensors;
+
+    use super::*;
+    use crate::utils::{attention_mask::prefill_mask, tensor_utils, test_utils};
+
+    #[test]
+    fn test_layer_0() {
+        let config = test_utils::load_config();
+        let tensor_dict = test_utils::load_tensor_dict();
+
+        let test_data_buffer = test_utils::load_test_data_buffer("hello_world").unwrap();
+        let test_data = SafeTensors::deserialize(&test_data_buffer).unwrap();
+
+        let mut decoder_block = DecoderBlock::new(config);
+        decoder_block.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.0"));
+
+        let test_input =
+            tensor_utils::load_from_view(&test_data.tensor("l0.input").unwrap()).unwrap();
+        let expected_out =
+            tensor_utils::load_from_view(&test_data.tensor("l0.output").unwrap()).unwrap();
+
+        let n_tokens = test_input.shape()[0];
+
+        let test_position_embedding = RotaryPositionEmbedding::new(
+            test_input.shape()[0],
+            config.head_dim,
+            config.rope_theta,
+            &config.rope_scaling,
+        );
+
+        let test_attention_mask = prefill_mask(n_tokens);
+
+        let test_output = decoder_block.forward(
+            &test_input,
+            &test_position_embedding,
+            &Some(test_attention_mask),
+            &None,
+        );
+
+        assert_relative_eq!(
+            test_output,
+            expected_out,
+            epsilon = 1e-6,
+            max_relative = 1e-4
+        );
+    }
+
+    // this passes but requires a slightly weaker tolerance of epsilon = 1e-5
+    #[test]
+    fn test_layer_15() {
+        let config = test_utils::load_config();
+        let tensor_dict = test_utils::load_tensor_dict();
+
+        let test_data_buffer = test_utils::load_test_data_buffer("hello_world").unwrap();
+        let test_data = SafeTensors::deserialize(&test_data_buffer).unwrap();
+
+        let mut decoder_block = DecoderBlock::new(config);
+        decoder_block.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.15"));
+
+        let test_input =
+            tensor_utils::load_from_view(&test_data.tensor("l15.input").unwrap()).unwrap();
+        let expected_out =
+            tensor_utils::load_from_view(&test_data.tensor("l15.output").unwrap()).unwrap();
+
+        let n_tokens = test_input.shape()[0];
+
+        let test_position_embedding = RotaryPositionEmbedding::new(
+            test_input.shape()[0],
+            config.head_dim,
+            config.rope_theta,
+            &config.rope_scaling,
+        );
+
+        let test_attention_mask = prefill_mask(n_tokens);
+
+        let test_output = decoder_block.forward(
+            &test_input,
+            &test_position_embedding,
+            &Some(test_attention_mask),
+            &None,
+        );
+
+        assert_relative_eq!(
+            test_output,
+            expected_out,
+            epsilon = 1e-5,
+            max_relative = 1e-4
+        );
     }
 }

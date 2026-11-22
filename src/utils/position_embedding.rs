@@ -1,7 +1,7 @@
 use core::f64;
-use std::{panic, println};
+use std::panic;
 
-use ndarray::{Array1, Array2, ArrayD, ArrayView, Axis, Ix2, IxDyn, concatenate, s};
+use ndarray::{Array1, Array2, ArrayView, Axis, Ix2, concatenate, s};
 
 use crate::config::RopeScalingConfig;
 
@@ -32,18 +32,11 @@ impl RotaryPositionEmbedding {
         // exponents <head_dim / 2>
         let exponents =
             Array1::linspace(0.0, (head_dim - 2) as f64, head_dim / 2) / head_dim as f64;
-
-        println!("exponents");
-        println!("{:?}", exponents.shape());
-
         // theta_1d <head_dim / 2>
         let frequencies_1d = exponents.map(|v| theta_base.powf(*v));
         let frequencies = frequencies_1d.broadcast((1, head_dim / 2)).unwrap();
         // let theta_1d = 1.0 / &frequencies;
         // theta <1, head_dim / 2>
-
-        println!("frequencies");
-        println!("{:?}", frequencies.shape());
 
         let original_context_length = scaling_config.original_max_position_embeddings as f64;
 
@@ -80,14 +73,8 @@ impl RotaryPositionEmbedding {
         let position_indices =
             Array1::linspace(0.0, max_position_index, max_seq_len).insert_axis(Axis(1));
 
-        println!("position_indices");
-        println!("{:?}", position_indices.shape());
-
         // rotations: <max_seq_len, head_dim / 2>
         let rotations = position_indices.dot(&inverse_frequencies);
-
-        println!("rotations");
-        println!("{:?}", rotations.shape());
 
         return RotaryPositionEmbedding {
             cos: rotations.cos().map(|v| *v as f32),
@@ -100,17 +87,10 @@ impl RotaryPositionEmbedding {
      *
      * ouput: <n_tokens, head_dim>
      */
-    pub fn forward(&self, input: &ArrayView<f32, Ix2>) -> ArrayD<f32> {
-        println!("RotaryPositionEmbedding.input");
-        println!("{:?}", input.shape());
+    pub fn forward(&self, input: &ArrayView<f32, Ix2>) -> Array2<f32> {
         // <n_tokens, head_dim / 2>
         let first_half = first_half(input);
         let second_half = second_half(input);
-
-        println!("first_half");
-        println!("{:?}", first_half.shape());
-        println!("second_half");
-        println!("{:?}", second_half.shape());
 
         let cos_first_half = &self.cos * &first_half;
         let cos_second_half = &self.cos * &second_half;
@@ -132,23 +112,24 @@ impl RotaryPositionEmbedding {
  *
  * ouput: <n_tokens, head_dim / 2>
  */
-fn first_half<'a>(input: &'a ArrayView<'a, f32, Ix2>) -> ArrayView<'a, f32, IxDyn> {
+fn first_half<'a>(input: &'a ArrayView<'a, f32, Ix2>) -> ArrayView<'a, f32, Ix2> {
     let head_dim = input.shape()[1] as isize;
     let slice = s![.., 0..(head_dim / 2)];
 
-    return input.slice(slice).into_dyn();
+    return input.slice(slice);
 }
 
-fn second_half<'a>(input: &'a ArrayView<'a, f32, Ix2>) -> ArrayView<'a, f32, IxDyn> {
+fn second_half<'a>(input: &'a ArrayView<'a, f32, Ix2>) -> ArrayView<'a, f32, Ix2> {
     let head_dim = input.shape()[1] as isize;
     let slice = s![.., (head_dim / 2)..(head_dim)];
 
-    return input.slice(slice).into_dyn();
+    return input.slice(slice);
 }
 
 #[cfg(test)]
 mod test {
     use approx::assert_relative_eq;
+    use ndarray::{Ix3, IxDyn};
     use safetensors::SafeTensors;
 
     use super::*;
@@ -162,7 +143,8 @@ mod test {
         let test_data = SafeTensors::deserialize(&test_data_buffer).unwrap();
 
         let test_input =
-            tensor_utils::load_from_view(&test_data.tensor("embed.output").unwrap()).unwrap();
+            tensor_utils::load_from_view::<Ix2>(&test_data.tensor("embed.output").unwrap())
+                .unwrap();
 
         let half_slice = s![.., 0..(config.head_dim / 2)];
 
@@ -228,7 +210,8 @@ mod test {
         let test_data = SafeTensors::deserialize(&test_data_buffer).unwrap();
 
         let test_input =
-            tensor_utils::load_from_view(&test_data.tensor("embed.output").unwrap()).unwrap();
+            tensor_utils::load_from_view::<Ix2>(&test_data.tensor("embed.output").unwrap())
+                .unwrap();
 
         let position_embedding = RotaryPositionEmbedding::new(
             test_input.shape()[0],
@@ -238,22 +221,24 @@ mod test {
         );
 
         let test_query_states =
-            tensor_utils::load_from_view(&test_data.tensor("l0.q_proj.output").unwrap()).unwrap();
+            tensor_utils::load_from_view::<Ix2>(&test_data.tensor("l0.q_proj.output").unwrap())
+                .unwrap();
 
         let test_key_states =
-            tensor_utils::load_from_view(&test_data.tensor("l0.k_proj.output").unwrap()).unwrap();
+            tensor_utils::load_from_view::<Ix2>(&test_data.tensor("l0.k_proj.output").unwrap())
+                .unwrap();
 
         println!("test_query_states");
         println!("{:?}", test_query_states.shape());
 
-        let expected_position_embedding_query_output = tensor_utils::load_from_view(
+        let expected_position_embedding_query_output = tensor_utils::load_from_view::<Ix3>(
             &test_data
                 .tensor("l0.self_attn.position_embedding.output.query")
                 .unwrap(),
         )
         .unwrap();
 
-        let expected_position_embedding_key_output = tensor_utils::load_from_view(
+        let expected_position_embedding_key_output = tensor_utils::load_from_view::<Ix3>(
             &test_data
                 .tensor("l0.self_attn.position_embedding.output.key")
                 .unwrap(),
@@ -288,11 +273,7 @@ mod test {
 
             let slice_start = kv_head_idx * config.head_dim;
             let slice_end = (kv_head_idx + 1) * config.head_dim;
-            let input_head_slice: ndarray::SliceInfo<
-                [ndarray::SliceInfoElem; 2],
-                ndarray::prelude::Dim<[usize; 2]>,
-                ndarray::prelude::Dim<[usize; 2]>,
-            > = s![.., slice_start..slice_end];
+            let input_head_slice = s![.., slice_start..slice_end];
             let test_position_embedding_key_ouput =
                 position_embedding.forward(&test_key_states.slice(input_head_slice));
 

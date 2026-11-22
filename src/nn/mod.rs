@@ -2,7 +2,7 @@ mod attention;
 mod decoder_block;
 mod gated_mlp;
 mod linear;
-mod normalisation;
+pub mod normalisation;
 
 pub use attention::Attention;
 pub use decoder_block::DecoderBlock;
