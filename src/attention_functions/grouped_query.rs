@@ -87,7 +87,7 @@ mod test {
     use approx::assert_relative_eq;
     use safetensors::SafeTensors;
 
-    use crate::utils::{attention_mask::prefill_mask, tensor_utils, test_utils};
+    use crate::utils::{ArrayLoader, attention_mask::prefill_mask, tensor_utils, test_utils};
 
     use super::*;
 
@@ -99,13 +99,21 @@ mod test {
         let test_data = SafeTensors::deserialize(&test_data_buffer).unwrap();
 
         let test_query_state_input =
-            tensor_utils::load_from_view(&test_data.tensor("l0.q_proj.output").unwrap()).unwrap();
+            ArrayLoader::<f32, Ix2>::try_from(&test_data.tensor("l0.q_proj.output").unwrap())
+                .unwrap()
+                .get();
         let test_key_state_input =
-            tensor_utils::load_from_view(&test_data.tensor("l0.k_proj.output").unwrap()).unwrap();
+            ArrayLoader::<f32, Ix2>::try_from(&test_data.tensor("l0.k_proj.output").unwrap())
+                .unwrap()
+                .get();
         let test_value_state_input =
-            tensor_utils::load_from_view(&test_data.tensor("l0.v_proj.output").unwrap()).unwrap();
+            ArrayLoader::<f32, Ix2>::try_from(&test_data.tensor("l0.v_proj.output").unwrap())
+                .unwrap()
+                .get();
         let expected_out =
-            tensor_utils::load_from_view(&test_data.tensor("l0.o_proj.input").unwrap()).unwrap();
+            ArrayLoader::<f32, Ix2>::try_from(&test_data.tensor("l0.o_proj.input").unwrap())
+                .unwrap()
+                .get();
 
         let n_tokens = test_query_state_input.shape()[0];
 
@@ -149,13 +157,21 @@ mod test {
         let test_data = SafeTensors::deserialize(&test_data_buffer).unwrap();
 
         let test_query_state_input =
-            tensor_utils::load_from_view(&test_data.tensor("l15.q_proj.output").unwrap()).unwrap();
+            ArrayLoader::<f32, Ix2>::try_from(&test_data.tensor("l15.q_proj.output").unwrap())
+                .unwrap()
+                .get();
         let test_key_state_input =
-            tensor_utils::load_from_view(&test_data.tensor("l15.k_proj.output").unwrap()).unwrap();
+            ArrayLoader::<f32, Ix2>::try_from(&test_data.tensor("l15.k_proj.output").unwrap())
+                .unwrap()
+                .get();
         let test_value_state_input =
-            tensor_utils::load_from_view(&test_data.tensor("l15.v_proj.output").unwrap()).unwrap();
+            ArrayLoader::<f32, Ix2>::try_from(&test_data.tensor("l15.v_proj.output").unwrap())
+                .unwrap()
+                .get();
         let expected_out =
-            tensor_utils::load_from_view(&test_data.tensor("l15.o_proj.input").unwrap()).unwrap();
+            ArrayLoader::<f32, Ix2>::try_from(&test_data.tensor("l15.o_proj.input").unwrap())
+                .unwrap()
+                .get();
 
         let n_tokens = test_query_state_input.shape()[0];
 

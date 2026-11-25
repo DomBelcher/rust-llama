@@ -131,7 +131,7 @@ mod test {
     use safetensors::SafeTensors;
 
     use super::*;
-    use crate::utils::{tensor_utils, test_utils};
+    use crate::utils::{ArrayLoader, tensor_utils, test_utils};
 
     #[test]
     fn test_cos_sin_calculated_correctly() {
@@ -141,18 +141,23 @@ mod test {
         let test_data = SafeTensors::deserialize(&test_data_buffer).unwrap();
 
         let test_input =
-            tensor_utils::load_from_view::<Ix2>(&test_data.tensor("embed.output").unwrap())
-                .unwrap();
+            ArrayLoader::<f32, Ix2>::try_from(&test_data.tensor("embed.output").unwrap())
+                .unwrap()
+                .get();
 
         let half_slice = s![.., 0..(config.head_dim / 2)];
 
-        let test_cos_value =
-            tensor_utils::load_from_view(&test_data.tensor("position_embedding.output.0").unwrap())
-                .unwrap();
+        let test_cos_value = ArrayLoader::<f32, Ix2>::try_from(
+            &test_data.tensor("position_embedding.output.0").unwrap(),
+        )
+        .unwrap()
+        .get();
 
-        let test_sin_value =
-            tensor_utils::load_from_view(&test_data.tensor("position_embedding.output.1").unwrap())
-                .unwrap();
+        let test_sin_value = ArrayLoader::<f32, Ix2>::try_from(
+            &test_data.tensor("position_embedding.output.1").unwrap(),
+        )
+        .unwrap()
+        .get();
 
         let position_embedding = RotaryPositionEmbedding::new(
             test_input.shape()[0],
@@ -163,7 +168,7 @@ mod test {
 
         for i in 0_usize..5_usize {
             for j in 0_usize..32_usize {
-                let expected = test_cos_value.get(IxDyn(&[i, j])).unwrap();
+                let expected = test_cos_value.get([i, j]).unwrap();
                 let actual = position_embedding.cos.get([i, j]).unwrap();
 
                 if (expected - actual).abs() > 1e-5 {
@@ -175,7 +180,7 @@ mod test {
 
         for i in 0_usize..5_usize {
             for j in 0_usize..32_usize {
-                let expected = test_sin_value.get(IxDyn(&[i, j])).unwrap();
+                let expected = test_sin_value.get([i, j]).unwrap();
                 let actual = position_embedding.sin.get([i, j]).unwrap();
 
                 if (expected - actual).abs() > 1e-5 {
@@ -208,8 +213,9 @@ mod test {
         let test_data = SafeTensors::deserialize(&test_data_buffer).unwrap();
 
         let test_input =
-            tensor_utils::load_from_view::<Ix2>(&test_data.tensor("embed.output").unwrap())
-                .unwrap();
+            ArrayLoader::<f32, Ix2>::try_from(&test_data.tensor("embed.output").unwrap())
+                .unwrap()
+                .get();
 
         let position_embedding = RotaryPositionEmbedding::new(
             test_input.shape()[0],
@@ -219,29 +225,33 @@ mod test {
         );
 
         let test_query_states =
-            tensor_utils::load_from_view::<Ix2>(&test_data.tensor("l0.q_proj.output").unwrap())
-                .unwrap();
+            ArrayLoader::<f32, Ix2>::try_from(&test_data.tensor("l0.q_proj.output").unwrap())
+                .unwrap()
+                .get();
 
         let test_key_states =
-            tensor_utils::load_from_view::<Ix2>(&test_data.tensor("l0.k_proj.output").unwrap())
-                .unwrap();
+            ArrayLoader::<f32, Ix2>::try_from(&test_data.tensor("l0.k_proj.output").unwrap())
+                .unwrap()
+                .get();
 
         println!("test_query_states");
         println!("{:?}", test_query_states.shape());
 
-        let expected_position_embedding_query_output = tensor_utils::load_from_view::<Ix3>(
+        let expected_position_embedding_query_output = ArrayLoader::<f32, Ix3>::try_from(
             &test_data
                 .tensor("l0.self_attn.position_embedding.output.query")
                 .unwrap(),
         )
-        .unwrap();
+        .unwrap()
+        .get();
 
-        let expected_position_embedding_key_output = tensor_utils::load_from_view::<Ix3>(
+        let expected_position_embedding_key_output = ArrayLoader::<f32, Ix3>::try_from(
             &test_data
                 .tensor("l0.self_attn.position_embedding.output.key")
                 .unwrap(),
         )
-        .unwrap();
+        .unwrap()
+        .get();
 
         for head_idx in 0..config.num_attention_heads {
             println!("Comparing query position embeddings for head {}", head_idx);

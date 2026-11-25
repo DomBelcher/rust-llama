@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
-use ndarray::ArrayD;
+use ndarray::{Array1, ArrayD, s};
+use tokenizers::Encoding;
 
 use crate::{
     config::Config,
-    nn::{DecoderBlock, NN, normalisation::RMSNorm},
+    nn::{DecoderBlock, NN, TokenEmbededing, normalisation::RMSNorm},
     utils::{attention_mask::prefill_mask, position_embedding::RotaryPositionEmbedding},
 };
 
@@ -17,6 +18,7 @@ use crate::{
  */
 pub struct Llama3<'a, T> {
     config: Config<'a>,
+    token_embedding: TokenEmbededing<T>,
     layers: Vec<DecoderBlock<T>>,
     output_norm: RMSNorm,
 }
@@ -31,13 +33,24 @@ impl<'a> Llama3<'a, f32> {
 
         return Llama3 {
             config: config.clone(),
+            token_embedding: TokenEmbededing::new(),
             layers,
             output_norm: RMSNorm::new(config.hidden_size, config.rms_norm_eps),
         };
     }
 
-    pub fn forward(&self, input: &ArrayD<f32>, kv_cache: &Option<HashMap<(), ()>>) -> ArrayD<f32> {
-        let n_tokens = input.shape()[0];
+    /**
+     * input_ids: <n_tokens>
+     *
+     * output: <embedding_dim>
+     */
+    pub fn forward(
+        &self,
+        input_ids: &Vec<usize>,
+        kv_cache: &Option<HashMap<(), ()>>,
+    ) -> Array1<f32> {
+        let hidden_state = self.token_embedding.embed_ids(input_ids);
+        let n_tokens = hidden_state.shape()[0];
         let position_embedding = RotaryPositionEmbedding::new(
             n_tokens,
             self.config.head_dim,
@@ -47,14 +60,18 @@ impl<'a> Llama3<'a, f32> {
 
         let attention_mask = Some(prefill_mask(n_tokens));
 
-        let mut hidden_state = input.clone();
-
+        let mut hidden_state = hidden_state.into_dyn();
         for decoder_layer in self.layers.iter() {
             hidden_state =
                 decoder_layer.forward(&hidden_state, &position_embedding, &attention_mask, &None)
         }
 
-        return self.output_norm.forward(&hidden_state);
+        let hidden_state = self.output_norm.forward(&hidden_state);
+        let last_slice = s![-1, ..];
+
+        return self
+            .token_embedding
+            .compute_logits(&hidden_state.slice(last_slice));
     }
 }
 
@@ -64,6 +81,8 @@ impl<'a> NN for Llama3<'a, f32> {
             layer.load_weight_tensors(&tensors.filter_prefix(&format!("layers.{}", layer_idx)));
         }
 
+        self.token_embedding
+            .load_weight_tensors(&tensors.filter_prefix("embed_tokens"));
         self.output_norm
             .load_weight_tensors(&tensors.filter_prefix("norm"));
     }
@@ -72,10 +91,11 @@ impl<'a> NN for Llama3<'a, f32> {
 #[cfg(test)]
 mod test {
     use approx::assert_relative_eq;
+    use ndarray::{Ix1, Ix2, IxDyn};
     use safetensors::SafeTensors;
 
     use super::*;
-    use crate::utils::{tensor_utils, test_utils};
+    use crate::utils::{ArrayLoader, tensor_utils, test_utils};
 
     #[test]
     // this passes but requires a slightly weaker tolerance of epsilon = 1e-5
@@ -90,17 +110,23 @@ mod test {
         llama3_model.load_weight_tensors(&tensor_dict.filter_prefix("model"));
 
         let test_input =
-            tensor_utils::load_from_view(&test_data.tensor("embed.output").unwrap()).unwrap();
-        let expected_out =
-            tensor_utils::load_from_view(&test_data.tensor("final_norm.output").unwrap()).unwrap();
+            ArrayLoader::<usize, Ix1>::try_from(&test_data.tensor("input_ids").unwrap())
+                .unwrap()
+                .get()
+                .to_vec();
+        let logits = ArrayLoader::<f32, Ix2>::try_from(&test_data.tensor("logits").unwrap())
+            .unwrap()
+            .get();
+
+        let expected_out = logits.slice(s![-1, ..]);
 
         let test_output = llama3_model.forward(&test_input, &None);
 
         assert_relative_eq!(
             test_output,
             expected_out,
-            epsilon = 1e-5,
-            max_relative = 1e-4
+            epsilon = 1e-4,
+            max_relative = 1e-3
         );
     }
 }

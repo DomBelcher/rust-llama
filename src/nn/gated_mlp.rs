@@ -61,13 +61,14 @@ impl NN for GatedMLP<f32> {
 #[cfg(test)]
 mod test {
     use approx::assert_relative_eq;
+    use ndarray::IxDyn;
     use safetensors::SafeTensors;
 
     use super::*;
     use crate::{
         activation_functions::activation_function,
         utils::{
-            tensor_utils,
+            ArrayLoader, tensor_utils,
             test_utils::{self},
         },
     };
@@ -83,9 +84,13 @@ mod test {
         mlp.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.0.mlp"));
 
         let test_input =
-            tensor_utils::load_from_view(&test_data.tensor("l0.mlp_norm.output").unwrap()).unwrap();
+            ArrayLoader::<f32, IxDyn>::try_from(&test_data.tensor("l0.mlp_norm.output").unwrap())
+                .unwrap()
+                .get();
         let expected_out =
-            tensor_utils::load_from_view(&test_data.tensor("l0.mlp_out.output").unwrap()).unwrap();
+            ArrayLoader::<f32, IxDyn>::try_from(&test_data.tensor("l0.mlp_out.output").unwrap())
+                .unwrap()
+                .get();
         let test_output = mlp.forward(&test_input);
 
         assert_relative_eq!(
@@ -107,10 +112,13 @@ mod test {
         mlp.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.15.mlp"));
 
         let test_input =
-            tensor_utils::load_from_view(&test_data.tensor("l15.mlp_norm.output").unwrap())
-                .unwrap();
+            ArrayLoader::<f32, IxDyn>::try_from(&test_data.tensor("l15.mlp_norm.output").unwrap())
+                .unwrap()
+                .get();
         let expected_out =
-            tensor_utils::load_from_view(&test_data.tensor("l15.mlp_out.output").unwrap()).unwrap();
+            ArrayLoader::<f32, IxDyn>::try_from(&test_data.tensor("l15.mlp_out.output").unwrap())
+                .unwrap()
+                .get();
         let test_output = mlp.forward(&test_input);
 
         assert_relative_eq!(

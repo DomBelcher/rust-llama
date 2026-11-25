@@ -1,14 +1,14 @@
 use dotenv::EnvLoader;
 use half::bf16;
 use memmap2::{Mmap, MmapOptions};
-use ndarray::{Array1, ArrayD, Axis};
+use ndarray::{Array1, ArrayD, Axis, IxDyn};
 use safetensors::SafeTensors;
-use std::{fs::File, println, vec};
+use std::{fmt::Display, fs::File, println, vec, write};
 use tokenizers::Tokenizer;
 
 use crate::{
     nn::NN,
-    utils::{position_embedding::RotaryPositionEmbedding, tensor_utils},
+    utils::{ArrayLoader, position_embedding::RotaryPositionEmbedding, tensor_utils},
 };
 
 mod activation_functions;
@@ -96,13 +96,25 @@ fn load_tensor_buffer() -> Result<Mmap, Box<dyn std::error::Error + Send + Sync>
     return Ok(buffer);
 }
 
-fn get_embedding_tensor(
-    tensors: &SafeTensors,
-) -> Result<ArrayD<f32>, Box<dyn std::error::Error + Send + Sync>> {
+#[derive(Debug)]
+struct LoadError {
+    pub msg: String,
+}
+impl Display for LoadError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.msg);
+        return Ok(());
+    }
+}
+impl std::error::Error for LoadError {}
+
+fn get_embedding_tensor(tensors: &SafeTensors) -> Result<ArrayD<f32>, Box<dyn std::error::Error>> {
     let embedding_weight = "model.embed_tokens.weight";
     let embedding_tensor_view = tensors.tensor(embedding_weight)?;
 
-    return tensor_utils::load_from_view(&embedding_tensor_view);
+    return ArrayLoader::<f32, IxDyn>::try_from(&embedding_tensor_view)
+        .map(|a| a.get())
+        .map_err(From::from);
 }
 
 fn load_tokenizer() -> Result<Tokenizer, Box<dyn std::error::Error + Send + Sync>> {

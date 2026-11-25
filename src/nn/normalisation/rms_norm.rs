@@ -1,8 +1,11 @@
 use std::println;
 
-use ndarray::{ArrayD, Axis};
+use ndarray::{ArrayD, Axis, IxDyn};
 
-use crate::{nn::NN, utils::tensor_utils};
+use crate::{
+    nn::NN,
+    utils::{ArrayLoader, tensor_utils},
+};
 
 // root mean-squared layern norm
 pub struct RMSNorm {
@@ -69,7 +72,11 @@ impl NN for RMSNorm {
         println!("Loading tensors for RMSNorm from dict");
         println!("{:?}", tensors.key_map);
 
-        self.load_weights(tensor_utils::load_from_view(&tensors.get("weight").unwrap()).unwrap());
+        self.load_weights(
+            ArrayLoader::<f32, IxDyn>::try_from(&tensors.get("weight").unwrap())
+                .unwrap()
+                .get(),
+        );
     }
 }
 
@@ -94,10 +101,13 @@ mod test {
         norm.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.0.input_layernorm"));
 
         let test_input =
-            tensor_utils::load_from_view(&test_data.tensor("l0.attn_norm.input").unwrap()).unwrap();
+            ArrayLoader::<f32, IxDyn>::try_from(&test_data.tensor("l0.attn_norm.input").unwrap())
+                .unwrap()
+                .get();
         let expected_out =
-            tensor_utils::load_from_view(&test_data.tensor("l0.attn_norm.output").unwrap())
-                .unwrap();
+            ArrayLoader::<f32, IxDyn>::try_from(&test_data.tensor("l0.attn_norm.output").unwrap())
+                .unwrap()
+                .get();
         // let n_tokens = test_input.shape()[0];
         // let head_size = config.hidden_size / config.num_attention_heads;
 
@@ -130,11 +140,13 @@ mod test {
         norm.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.15.input_layernorm"));
 
         let test_input =
-            tensor_utils::load_from_view(&test_data.tensor("l15.attn_norm.input").unwrap())
-                .unwrap();
+            ArrayLoader::<f32, IxDyn>::try_from(&test_data.tensor("l15.attn_norm.input").unwrap())
+                .unwrap()
+                .get();
         let expected_out =
-            tensor_utils::load_from_view(&test_data.tensor("l15.attn_norm.output").unwrap())
-                .unwrap();
+            ArrayLoader::<f32, IxDyn>::try_from(&test_data.tensor("l15.attn_norm.output").unwrap())
+                .unwrap()
+                .get();
 
         let test_output = norm.forward(&test_input);
 

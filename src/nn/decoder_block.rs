@@ -91,10 +91,11 @@ impl NN for DecoderBlock<f32> {
 #[cfg(test)]
 mod test {
     use approx::assert_relative_eq;
+    use ndarray::IxDyn;
     use safetensors::SafeTensors;
 
     use super::*;
-    use crate::utils::{attention_mask::prefill_mask, tensor_utils, test_utils};
+    use crate::utils::{ArrayLoader, attention_mask::prefill_mask, tensor_utils, test_utils};
 
     #[test]
     fn test_layer_0() {
@@ -108,9 +109,13 @@ mod test {
         decoder_block.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.0"));
 
         let test_input =
-            tensor_utils::load_from_view(&test_data.tensor("l0.input").unwrap()).unwrap();
+            ArrayLoader::<f32, IxDyn>::try_from(&test_data.tensor("l0.input").unwrap())
+                .unwrap()
+                .get();
         let expected_out =
-            tensor_utils::load_from_view(&test_data.tensor("l0.output").unwrap()).unwrap();
+            ArrayLoader::<f32, IxDyn>::try_from(&test_data.tensor("l0.output").unwrap())
+                .unwrap()
+                .get();
 
         let n_tokens = test_input.shape()[0];
 
@@ -151,9 +156,13 @@ mod test {
         decoder_block.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.15"));
 
         let test_input =
-            tensor_utils::load_from_view(&test_data.tensor("l15.input").unwrap()).unwrap();
+            ArrayLoader::<f32, IxDyn>::try_from(&test_data.tensor("l15.input").unwrap())
+                .unwrap()
+                .get();
         let expected_out =
-            tensor_utils::load_from_view(&test_data.tensor("l15.output").unwrap()).unwrap();
+            ArrayLoader::<f32, IxDyn>::try_from(&test_data.tensor("l15.output").unwrap())
+                .unwrap()
+                .get();
 
         let n_tokens = test_input.shape()[0];
 

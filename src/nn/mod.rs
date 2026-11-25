@@ -3,11 +3,13 @@ mod decoder_block;
 mod gated_mlp;
 mod linear;
 pub mod normalisation;
+mod token_embedding;
 
 pub use attention::Attention;
 pub use decoder_block::DecoderBlock;
 pub use gated_mlp::GatedMLP;
 pub use linear::Linear;
+pub use token_embedding::TokenEmbededing;
 
 use crate::utils::tensor_utils::TensorDict;
 

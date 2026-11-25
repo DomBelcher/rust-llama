@@ -2,7 +2,10 @@ use ndarray::{Array, Array2, ArrayD, Dimension, Ix2, linalg::Dot};
 
 use crate::{
     nn::NN,
-    utils::tensor_utils::{self, TensorDict},
+    utils::{
+        ArrayLoader,
+        tensor_utils::{self, TensorDict},
+    },
 };
 
 pub struct Linear<T, D: Dimension> {
@@ -72,7 +75,9 @@ impl NN for Linear<f32, Ix2> {
         println!("{:?}", tensors.key_map);
 
         let weight_view = tensors.get("weight").unwrap();
-        let weights = tensor_utils::load_from_view::<Ix2>(&weight_view).unwrap();
+        let weights = ArrayLoader::<f32, Ix2>::try_from(&weight_view)
+            .unwrap()
+            .get();
         self.load_weights(weights.reversed_axes());
     }
 }
@@ -80,10 +85,11 @@ impl NN for Linear<f32, Ix2> {
 #[cfg(test)]
 mod test {
     use approx::assert_relative_eq;
+    use ndarray::IxDyn;
     use safetensors::SafeTensors;
 
     use super::*;
-    use crate::utils::test_utils;
+    use crate::utils::{ArrayLoader, test_utils};
 
     #[test]
     fn test_layer_0_q_proj() {
@@ -97,9 +103,13 @@ mod test {
         linear.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.0.self_attn.q_proj"));
 
         let test_input =
-            tensor_utils::load_from_view(&test_data.tensor("l0.q_proj.input").unwrap()).unwrap();
+            ArrayLoader::<f32, Ix2>::try_from(&test_data.tensor("l0.q_proj.input").unwrap())
+                .unwrap()
+                .get();
         let expected_out =
-            tensor_utils::load_from_view(&test_data.tensor("l0.q_proj.output").unwrap()).unwrap();
+            ArrayLoader::<f32, Ix2>::try_from(&test_data.tensor("l0.q_proj.output").unwrap())
+                .unwrap()
+                .get();
 
         let test_output = linear.forward(&test_input);
 
@@ -123,9 +133,13 @@ mod test {
         linear.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.0.self_attn.k_proj"));
 
         let test_input =
-            tensor_utils::load_from_view(&test_data.tensor("l0.k_proj.input").unwrap()).unwrap();
+            ArrayLoader::<f32, Ix2>::try_from(&test_data.tensor("l0.k_proj.input").unwrap())
+                .unwrap()
+                .get();
         let expected_out =
-            tensor_utils::load_from_view(&test_data.tensor("l0.k_proj.output").unwrap()).unwrap();
+            ArrayLoader::<f32, Ix2>::try_from(&test_data.tensor("l0.k_proj.output").unwrap())
+                .unwrap()
+                .get();
 
         let test_output = linear.forward(&test_input);
 
@@ -149,9 +163,13 @@ mod test {
         linear.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.0.self_attn.v_proj"));
 
         let test_input =
-            tensor_utils::load_from_view(&test_data.tensor("l0.v_proj.input").unwrap()).unwrap();
+            ArrayLoader::<f32, Ix2>::try_from(&test_data.tensor("l0.v_proj.input").unwrap())
+                .unwrap()
+                .get();
         let expected_out =
-            tensor_utils::load_from_view(&test_data.tensor("l0.v_proj.output").unwrap()).unwrap();
+            ArrayLoader::<f32, Ix2>::try_from(&test_data.tensor("l0.v_proj.output").unwrap())
+                .unwrap()
+                .get();
 
         let test_output = linear.forward(&test_input);
 
@@ -175,9 +193,13 @@ mod test {
         linear.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.0.self_attn.o_proj"));
 
         let test_input =
-            tensor_utils::load_from_view(&test_data.tensor("l0.o_proj.input").unwrap()).unwrap();
+            ArrayLoader::<f32, Ix2>::try_from(&test_data.tensor("l0.o_proj.input").unwrap())
+                .unwrap()
+                .get();
         let expected_out =
-            tensor_utils::load_from_view(&test_data.tensor("l0.o_proj.output").unwrap()).unwrap();
+            ArrayLoader::<f32, Ix2>::try_from(&test_data.tensor("l0.o_proj.output").unwrap())
+                .unwrap()
+                .get();
 
         let test_output = linear.forward(&test_input);
 
@@ -201,11 +223,14 @@ mod test {
         linear.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.0.mlp.gate_proj"));
 
         let test_input =
-            tensor_utils::load_from_view(&test_data.tensor("l0.mlp.gate_proj.input").unwrap())
-                .unwrap();
-        let expected_out =
-            tensor_utils::load_from_view(&test_data.tensor("l0.mlp.gate_proj.output").unwrap())
-                .unwrap();
+            ArrayLoader::<f32, Ix2>::try_from(&test_data.tensor("l0.mlp.gate_proj.input").unwrap())
+                .unwrap()
+                .get();
+        let expected_out = ArrayLoader::<f32, Ix2>::try_from(
+            &test_data.tensor("l0.mlp.gate_proj.output").unwrap(),
+        )
+        .unwrap()
+        .get();
 
         let test_output = linear.forward(&test_input);
 
@@ -229,11 +254,13 @@ mod test {
         linear.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.0.mlp.up_proj"));
 
         let test_input =
-            tensor_utils::load_from_view(&test_data.tensor("l0.mlp.up_proj.input").unwrap())
-                .unwrap();
+            ArrayLoader::<f32, Ix2>::try_from(&test_data.tensor("l0.mlp.up_proj.input").unwrap())
+                .unwrap()
+                .get();
         let expected_out =
-            tensor_utils::load_from_view(&test_data.tensor("l0.mlp.up_proj.output").unwrap())
-                .unwrap();
+            ArrayLoader::<f32, Ix2>::try_from(&test_data.tensor("l0.mlp.up_proj.output").unwrap())
+                .unwrap()
+                .get();
 
         let test_output = linear.forward(&test_input);
 
@@ -257,11 +284,14 @@ mod test {
         linear.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.0.mlp.down_proj"));
 
         let test_input =
-            tensor_utils::load_from_view(&test_data.tensor("l0.mlp.down_proj.input").unwrap())
-                .unwrap();
-        let expected_out =
-            tensor_utils::load_from_view(&test_data.tensor("l0.mlp.down_proj.output").unwrap())
-                .unwrap();
+            ArrayLoader::<f32, Ix2>::try_from(&test_data.tensor("l0.mlp.down_proj.input").unwrap())
+                .unwrap()
+                .get();
+        let expected_out = ArrayLoader::<f32, Ix2>::try_from(
+            &test_data.tensor("l0.mlp.down_proj.output").unwrap(),
+        )
+        .unwrap()
+        .get();
 
         let test_output = linear.forward(&test_input);
 
@@ -285,9 +315,13 @@ mod test {
         linear.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.15.self_attn.q_proj"));
 
         let test_input =
-            tensor_utils::load_from_view(&test_data.tensor("l15.q_proj.input").unwrap()).unwrap();
+            ArrayLoader::<f32, Ix2>::try_from(&test_data.tensor("l15.q_proj.input").unwrap())
+                .unwrap()
+                .get();
         let expected_out =
-            tensor_utils::load_from_view(&test_data.tensor("l15.q_proj.output").unwrap()).unwrap();
+            ArrayLoader::<f32, Ix2>::try_from(&test_data.tensor("l15.q_proj.output").unwrap())
+                .unwrap()
+                .get();
 
         let test_output = linear.forward(&test_input);
 
@@ -311,9 +345,13 @@ mod test {
         linear.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.15.self_attn.k_proj"));
 
         let test_input =
-            tensor_utils::load_from_view(&test_data.tensor("l15.k_proj.input").unwrap()).unwrap();
+            ArrayLoader::<f32, Ix2>::try_from(&test_data.tensor("l15.k_proj.input").unwrap())
+                .unwrap()
+                .get();
         let expected_out =
-            tensor_utils::load_from_view(&test_data.tensor("l15.k_proj.output").unwrap()).unwrap();
+            ArrayLoader::<f32, Ix2>::try_from(&test_data.tensor("l15.k_proj.output").unwrap())
+                .unwrap()
+                .get();
 
         let test_output = linear.forward(&test_input);
 
@@ -337,9 +375,13 @@ mod test {
         linear.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.15.self_attn.v_proj"));
 
         let test_input =
-            tensor_utils::load_from_view(&test_data.tensor("l15.v_proj.input").unwrap()).unwrap();
+            ArrayLoader::<f32, Ix2>::try_from(&test_data.tensor("l15.v_proj.input").unwrap())
+                .unwrap()
+                .get();
         let expected_out =
-            tensor_utils::load_from_view(&test_data.tensor("l15.v_proj.output").unwrap()).unwrap();
+            ArrayLoader::<f32, Ix2>::try_from(&test_data.tensor("l15.v_proj.output").unwrap())
+                .unwrap()
+                .get();
 
         let test_output = linear.forward(&test_input);
 
@@ -363,9 +405,13 @@ mod test {
         linear.load_weight_tensors(&tensor_dict.filter_prefix("model.layers.15.self_attn.o_proj"));
 
         let test_input =
-            tensor_utils::load_from_view(&test_data.tensor("l15.o_proj.input").unwrap()).unwrap();
+            ArrayLoader::<f32, Ix2>::try_from(&test_data.tensor("l15.o_proj.input").unwrap())
+                .unwrap()
+                .get();
         let expected_out =
-            tensor_utils::load_from_view(&test_data.tensor("l15.o_proj.output").unwrap()).unwrap();
+            ArrayLoader::<f32, Ix2>::try_from(&test_data.tensor("l15.o_proj.output").unwrap())
+                .unwrap()
+                .get();
 
         let test_output = linear.forward(&test_input);
 
